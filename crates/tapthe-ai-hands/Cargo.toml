@@ -1,12 +1,12 @@
 [package]
-name = "openfang-hands"
+name = "tapthe-ai-hands"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Hands system for OpenFang — curated autonomous capability packages"
+description = "Hands system for Tapthe.ai — curated autonomous capability packages"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }

@@ -6,10 +6,10 @@
 use crate::llm_driver::{CompletionRequest, CompletionResponse, LlmDriver, LlmError, StreamEvent};
 use async_trait::async_trait;
 use futures::StreamExt;
-use openfang_types::message::{
+use tapthe_ai_types::message::{
     ContentBlock, Message, MessageContent, Role, StopReason, TokenUsage,
 };
-use openfang_types::tool::ToolCall;
+use tapthe_ai_types::tool::ToolCall;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use zeroize::Zeroizing;
@@ -574,7 +574,7 @@ fn ensure_object(v: &serde_json::Value) -> serde_json::Value {
     }
 }
 
-/// Convert an OpenFang Message to an Anthropic API message.
+/// Convert an Tapthe.ai Message to an Anthropic API message.
 fn convert_message(msg: &Message) -> ApiMessage {
     let role = match msg.role {
         Role::User => "user",

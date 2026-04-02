@@ -1,12 +1,12 @@
 [package]
-name = "openfang-skills"
+name = "tapthe-ai-skills"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Skill system for OpenFang — registry, loader, marketplace, and OpenClaw compatibility"
+description = "Skill system for Tapthe.ai — registry, loader, marketplace, and OpenClaw compatibility"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }

@@ -1,4 +1,4 @@
-//! Request/response types for the OpenFang API.
+//! Request/response types for the Tapthe.ai API.
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ pub struct SpawnRequest {
     /// Agent manifest as TOML string (optional if `template` is provided).
     #[serde(default)]
     pub manifest_toml: String,
-    /// Template name from `~/.openfang/agents/{template}/agent.toml`.
+    /// Template name from `~/.tapthe-ai/agents/{template}/agent.toml`.
     /// When provided and `manifest_toml` is empty, the template is loaded automatically.
     #[serde(default)]
     pub template: Option<String>,
@@ -82,7 +82,7 @@ pub struct AgentUpdateRequest {
 /// Request to change an agent's operational mode.
 #[derive(Debug, Deserialize)]
 pub struct SetModeRequest {
-    pub mode: openfang_types::agent::AgentMode,
+    pub mode: tapthe_ai_types::agent::AgentMode,
 }
 
 /// Request to run a migration.

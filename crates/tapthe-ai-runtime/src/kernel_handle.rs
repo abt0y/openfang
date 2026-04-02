@@ -1,6 +1,6 @@
 //! Trait abstraction for kernel operations needed by the agent runtime.
 //!
-//! This trait allows `openfang-runtime` to call back into the kernel for
+//! This trait allows `tapthe-ai-runtime` to call back into the kernel for
 //! inter-agent operations (spawn, send, list, kill) without creating
 //! a circular dependency. The kernel implements this trait and passes
 //! it into the agent loop.
@@ -80,20 +80,20 @@ pub trait KernelHandle: Send + Sync {
     /// Add an entity to the knowledge graph.
     async fn knowledge_add_entity(
         &self,
-        entity: openfang_types::memory::Entity,
+        entity: tapthe_ai_types::memory::Entity,
     ) -> Result<String, String>;
 
     /// Add a relation to the knowledge graph.
     async fn knowledge_add_relation(
         &self,
-        relation: openfang_types::memory::Relation,
+        relation: tapthe_ai_types::memory::Relation,
     ) -> Result<String, String>;
 
     /// Query the knowledge graph with a pattern.
     async fn knowledge_query(
         &self,
-        pattern: openfang_types::memory::GraphPattern,
-    ) -> Result<Vec<openfang_types::memory::GraphMatch>, String>;
+        pattern: tapthe_ai_types::memory::GraphPattern,
+    ) -> Result<Vec<tapthe_ai_types::memory::GraphMatch>, String>;
 
     /// Create a cron job for the calling agent.
     async fn cron_create(
@@ -251,7 +251,7 @@ pub trait KernelHandle: Send + Sync {
         &self,
         manifest_toml: &str,
         parent_id: Option<&str>,
-        parent_caps: &[openfang_types::capability::Capability],
+        parent_caps: &[tapthe_ai_types::capability::Capability],
     ) -> Result<(String, String), String> {
         // Default: delegate to spawn_agent (no enforcement)
         // The kernel MUST override this with real enforcement

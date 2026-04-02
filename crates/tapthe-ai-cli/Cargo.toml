@@ -1,21 +1,21 @@
 [package]
-name = "openfang-cli"
+name = "tapthe-ai-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "CLI tool for the OpenFang Agent OS"
+description = "CLI tool for the Tapthe.ai Agent OS"
 
 [[bin]]
-name = "openfang"
+name = "tapthe-ai"
 path = "src/main.rs"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
-openfang-kernel = { path = "../openfang-kernel" }
-openfang-api = { path = "../openfang-api" }
-openfang-migrate = { path = "../openfang-migrate" }
-openfang-skills = { path = "../openfang-skills" }
-openfang-extensions = { path = "../openfang-extensions" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
+tapthe-ai-kernel = { path = "../tapthe-ai-kernel" }
+tapthe-ai-api = { path = "../tapthe-ai-api" }
+tapthe-ai-migrate = { path = "../tapthe-ai-migrate" }
+tapthe-ai-skills = { path = "../tapthe-ai-skills" }
+tapthe-ai-extensions = { path = "../tapthe-ai-extensions" }
 zeroize = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
@@ -27,7 +27,7 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 dirs = { workspace = true }
 reqwest = { workspace = true, features = ["blocking"] }
-openfang-runtime = { path = "../openfang-runtime" }
+tapthe-ai-runtime = { path = "../tapthe-ai-runtime" }
 uuid = { workspace = true }
 ratatui = { workspace = true }
 colored = { workspace = true }

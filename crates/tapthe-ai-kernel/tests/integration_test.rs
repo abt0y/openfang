@@ -1,13 +1,13 @@
 //! Integration test: boot kernel -> spawn agent -> send message via Groq API.
 //!
-//! Run with: GROQ_API_KEY=gsk_... cargo test -p openfang-kernel --test integration_test -- --nocapture
+//! Run with: GROQ_API_KEY=gsk_... cargo test -p tapthe-ai-kernel --test integration_test -- --nocapture
 
-use openfang_kernel::OpenFangKernel;
-use openfang_types::agent::AgentManifest;
-use openfang_types::config::{DefaultModelConfig, KernelConfig};
+use tapthe_ai_kernel::TaptheAiKernel;
+use tapthe_ai_types::agent::AgentManifest;
+use tapthe_ai_types::config::{DefaultModelConfig, KernelConfig};
 
 fn test_config() -> KernelConfig {
-    let tmp = std::env::temp_dir().join("openfang-integration-test");
+    let tmp = std::env::temp_dir().join("tapthe-ai-integration-test");
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).unwrap();
 
@@ -33,7 +33,7 @@ async fn test_full_pipeline_with_groq() {
 
     // Boot kernel
     let config = test_config();
-    let kernel = OpenFangKernel::boot_with_config(config).expect("Kernel should boot");
+    let kernel = TaptheAiKernel::boot_with_config(config).expect("Kernel should boot");
 
     // Spawn agent
     let manifest: AgentManifest = toml::from_str(
@@ -91,7 +91,7 @@ async fn test_multiple_agents_different_models() {
     }
 
     let config = test_config();
-    let kernel = OpenFangKernel::boot_with_config(config).expect("Kernel should boot");
+    let kernel = TaptheAiKernel::boot_with_config(config).expect("Kernel should boot");
 
     // Spawn agent 1: llama 70b
     let manifest1: AgentManifest = toml::from_str(

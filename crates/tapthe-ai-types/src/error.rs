@@ -1,10 +1,10 @@
-//! Shared error types for the OpenFang system.
+//! Shared error types for the Tapthe.ai system.
 
 use thiserror::Error;
 
-/// Top-level error type for the OpenFang system.
+/// Top-level error type for the Tapthe.ai system.
 #[derive(Error, Debug)]
-pub enum OpenFangError {
+pub enum TaptheAiError {
     /// The requested agent was not found.
     #[error("Agent not found: {0}")]
     AgentNotFound(String),
@@ -100,5 +100,5 @@ pub enum OpenFangError {
     InvalidInput(String),
 }
 
-/// Alias for Result with OpenFangError.
-pub type OpenFangResult<T> = Result<T, OpenFangError>;
+/// Alias for Result with TaptheAiError.
+pub type TaptheAiResult<T> = Result<T, TaptheAiError>;

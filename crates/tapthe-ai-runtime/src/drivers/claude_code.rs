@@ -11,7 +11,7 @@
 use crate::llm_driver::{CompletionRequest, CompletionResponse, LlmDriver, LlmError, StreamEvent};
 use async_trait::async_trait;
 use dashmap::DashMap;
-use openfang_types::message::{ContentBlock, Role, StopReason, TokenUsage};
+use tapthe_ai_types::message::{ContentBlock, Role, StopReason, TokenUsage};
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt};
@@ -74,7 +74,7 @@ impl ClaudeCodeDriver {
             warn!(
                 "Claude Code driver: --dangerously-skip-permissions enabled. \
                  The CLI will not prompt for tool approvals. \
-                 OpenFang's own capability/RBAC system enforces access control."
+                 Tapthe.ai's own capability/RBAC system enforces access control."
             );
         }
 
@@ -283,7 +283,7 @@ impl LlmDriver for ClaudeCodeDriver {
         Self::apply_env_filter(&mut cmd);
 
         // Inject HOME so the CLI can find its credentials (~/.claude/) when
-        // OpenFang runs as a service without a login shell.
+        // Tapthe.ai runs as a service without a login shell.
         if let Some(home) = home_dir() {
             cmd.env("HOME", &home);
         }
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_build_prompt_simple() {
-        use openfang_types::message::{Message, MessageContent};
+        use tapthe_ai_types::message::{Message, MessageContent};
 
         let request = CompletionRequest {
             model: "claude-code/sonnet".to_string(),

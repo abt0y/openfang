@@ -410,21 +410,21 @@ struct LegacyYamlChannelConfig {
 }
 
 // ---------------------------------------------------------------------------
-// OpenFang output types (TOML)
+// Tapthe.ai output types (TOML)
 // ---------------------------------------------------------------------------
 
-/// OpenFang config.toml structure for serialization.
+/// Tapthe.ai config.toml structure for serialization.
 #[derive(Serialize)]
-struct OpenFangConfig {
-    default_model: OpenFangModelConfig,
-    memory: OpenFangMemorySection,
-    network: OpenFangNetworkSection,
+struct Tapthe.aiConfig {
+    default_model: Tapthe.aiModelConfig,
+    memory: Tapthe.aiMemorySection,
+    network: Tapthe.aiNetworkSection,
     #[serde(skip_serializing_if = "Option::is_none")]
     channels: Option<toml::Value>,
 }
 
 #[derive(Serialize)]
-struct OpenFangModelConfig {
+struct Tapthe.aiModelConfig {
     provider: String,
     model: String,
     api_key_env: String,
@@ -433,12 +433,12 @@ struct OpenFangModelConfig {
 }
 
 #[derive(Serialize)]
-struct OpenFangMemorySection {
+struct Tapthe.aiMemorySection {
     decay_rate: f32,
 }
 
 #[derive(Serialize)]
-struct OpenFangNetworkSection {
+struct Tapthe.aiNetworkSection {
     listen_addr: String,
 }
 
@@ -486,7 +486,7 @@ fn write_secret_env(path: &Path, key: &str, value: &str) -> Result<(), std::io::
     Ok(())
 }
 
-/// Map OpenClaw DM policy to OpenFang DM policy string.
+/// Map OpenClaw DM policy to Tapthe.ai DM policy string.
 fn map_dm_policy(oc: &str) -> &'static str {
     match oc.to_lowercase().as_str() {
         "open" => "respond",
@@ -496,7 +496,7 @@ fn map_dm_policy(oc: &str) -> &'static str {
     }
 }
 
-/// Map OpenClaw group policy to OpenFang group policy string.
+/// Map OpenClaw group policy to Tapthe.ai group policy string.
 fn map_group_policy(oc: &str) -> &'static str {
     match oc.to_lowercase().as_str() {
         "open" => "respond",
@@ -665,12 +665,12 @@ fn find_config_file(dir: &Path) -> Option<PathBuf> {
 }
 
 // Tool name mapping and recognition are shared with the skill system.
-use openfang_types::tool_compat::{is_known_openfang_tool, map_tool_name};
+use tapthe_ai_types::tool_compat::{is_known_tapthe_ai_tool, map_tool_name};
 
-/// Map OpenClaw tool profile to OpenFang capability tool list.
+/// Map OpenClaw tool profile to Tapthe.ai capability tool list.
 /// Delegates to `ToolProfile` so the migration and kernel use identical definitions.
 fn tools_for_profile(profile: &str) -> Vec<String> {
-    use openfang_types::agent::ToolProfile;
+    use tapthe_ai_types::agent::ToolProfile;
     let p = match profile {
         "minimal" => ToolProfile::Minimal,
         "coding" => ToolProfile::Coding,
@@ -682,7 +682,7 @@ fn tools_for_profile(profile: &str) -> Vec<String> {
     p.tools()
 }
 
-/// Map OpenClaw provider name to OpenFang provider name.
+/// Map OpenClaw provider name to Tapthe.ai provider name.
 fn map_provider(openclaw_provider: &str) -> String {
     match openclaw_provider.to_lowercase().as_str() {
         "anthropic" | "claude" => "anthropic".to_string(),
@@ -706,7 +706,7 @@ fn map_provider(openclaw_provider: &str) -> String {
         "xai" | "grok" => "xai".to_string(),
         "cerebras" => "cerebras".to_string(),
         "sambanova" => "sambanova".to_string(),
-        // Additional OpenFang-supported providers and aliases
+        // Additional Tapthe.ai-supported providers and aliases
         "perplexity" => "perplexity".to_string(),
         "cohere" => "cohere".to_string(),
         "ai21" => "ai21".to_string(),
@@ -754,7 +754,7 @@ fn default_api_key_env(provider: &str) -> String {
     }
 }
 
-fn is_known_openfang_provider_id(provider: &str) -> bool {
+fn is_known_tapthe_ai_provider_id(provider: &str) -> bool {
     matches!(
         provider,
         "anthropic"
@@ -845,8 +845,8 @@ fn resolve_provider_with_models_context(
         .unwrap_or_default()
         .to_lowercase();
 
-    let raw_is_known = is_known_openfang_provider_id(&raw);
-    let mapped_is_known = is_known_openfang_provider_id(&mapped);
+    let raw_is_known = is_known_tapthe_ai_provider_id(&raw);
+    let mapped_is_known = is_known_tapthe_ai_provider_id(&mapped);
 
     let provider = if api_hint.contains("anthropic") {
         "anthropic".to_string()
@@ -1379,15 +1379,15 @@ fn migrate_config_from_json(
     // Extract channels (writes secrets.env)
     let channels = migrate_channels_from_json(root, target, dry_run, report);
 
-    let of_config = OpenFangConfig {
-        default_model: OpenFangModelConfig {
+    let of_config = Tapthe.aiConfig {
+        default_model: Tapthe.aiModelConfig {
             provider: resolved.provider,
             model: resolved.model,
             api_key_env,
             base_url: resolved.base_url,
         },
-        memory: OpenFangMemorySection { decay_rate: 0.05 },
-        network: OpenFangNetworkSection {
+        memory: Tapthe.aiMemorySection { decay_rate: 0.05 },
+        network: Tapthe.aiNetworkSection {
             listen_addr: "127.0.0.1:4200".to_string(),
         },
         channels,
@@ -1396,7 +1396,7 @@ fn migrate_config_from_json(
     let toml_str = toml::to_string_pretty(&of_config)?;
 
     let config_content = format!(
-        "# OpenFang Agent OS configuration\n\
+        "# Tapthe.ai Agent OS configuration\n\
          # Migrated from OpenClaw on {}\n\n\
          {toml_str}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
@@ -1881,12 +1881,12 @@ fn migrate_channels_from_json(
         });
     }
 
-    // --- BlueBubbles (skip — no OpenFang adapter) ---
+    // --- BlueBubbles (skip — no Tapthe.ai adapter) ---
     if oc_channels.bluebubbles.is_some() {
         report.skipped.push(SkippedItem {
             kind: ItemKind::Channel,
             name: "bluebubbles".to_string(),
-            reason: "No OpenFang adapter available — consider using the iMessage channel instead"
+            reason: "No Tapthe.ai adapter available — consider using the iMessage channel instead"
                 .to_string(),
         });
     }
@@ -1896,7 +1896,7 @@ fn migrate_channels_from_json(
         report.skipped.push(SkippedItem {
             kind: ItemKind::Channel,
             name: key.clone(),
-            reason: format!("Unknown channel '{key}' — not mapped to any OpenFang adapter"),
+            reason: format!("Unknown channel '{key}' — not mapped to any Tapthe.ai adapter"),
         });
     }
 
@@ -1954,7 +1954,7 @@ fn migrate_agents_from_json(
 
                 for tool in &unmapped_tools {
                     report.warnings.push(format!(
-                        "Agent '{id}': tool '{tool}' has no OpenFang equivalent and was skipped"
+                        "Agent '{id}': tool '{tool}' has no Tapthe.ai equivalent and was skipped"
                     ));
                 }
 
@@ -2001,7 +2001,7 @@ fn convert_agent_from_json(
             let allow = extract_string_list(allow_val);
             let mut mapped = Vec::new();
             for t in &allow {
-                if is_known_openfang_tool(t) {
+                if is_known_tapthe_ai_tool(t) {
                     mapped.push(t.clone());
                 } else if let Some(of_name) = map_tool_name(t) {
                     mapped.push(of_name.to_string());
@@ -2013,7 +2013,7 @@ fn convert_agent_from_json(
             if let Some(ref also_val) = agent_tools.also_allow {
                 let also = extract_string_list(also_val);
                 for t in &also {
-                    if is_known_openfang_tool(t) {
+                    if is_known_tapthe_ai_tool(t) {
                         mapped.push(t.clone());
                     } else if let Some(of_name) = map_tool_name(t) {
                         mapped.push(of_name.to_string());
@@ -2052,14 +2052,14 @@ fn convert_agent_from_json(
         .or_else(|| defaults.and_then(|d| d.identity.clone()))
         .unwrap_or_else(|| {
             format!(
-                "You are {display_name}, an AI agent running on the OpenFang Agent OS. You are helpful, concise, and accurate."
+                "You are {display_name}, an AI agent running on the Tapthe.ai Agent OS. You are helpful, concise, and accurate."
             )
         });
 
     // Build agent TOML
     let mut toml_str = String::new();
     toml_str.push_str(&format!(
-        "# OpenFang agent manifest\n# Migrated from OpenClaw agent '{id}'\n\n"
+        "# Tapthe.ai agent manifest\n# Migrated from OpenClaw agent '{id}'\n\n"
     ));
     toml_str.push_str(&format!(
         "name = \"{}\"\n",
@@ -2069,7 +2069,7 @@ fn convert_agent_from_json(
     toml_str.push_str(&format!(
         "description = \"Migrated from OpenClaw agent '{id}'\"\n"
     ));
-    toml_str.push_str("author = \"openfang\"\n");
+    toml_str.push_str("author = \"tapthe-ai\"\n");
     toml_str.push_str("module = \"builtin:chat\"\n");
 
     toml_str.push_str("\n[model]\n");
@@ -2154,7 +2154,7 @@ fn resolve_default_tools(defaults: Option<&OpenClawAgentDefaults>) -> Vec<String
                 let allow = extract_string_list(allow_val);
                 let mut mapped = Vec::new();
                 for t in &allow {
-                    if is_known_openfang_tool(t) {
+                    if is_known_tapthe_ai_tool(t) {
                         mapped.push(t.clone());
                     } else if let Some(of_name) = map_tool_name(t) {
                         mapped.push(of_name.to_string());
@@ -2463,7 +2463,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
         report.skipped.push(SkippedItem {
             kind: ItemKind::Config,
             name: "cron".to_string(),
-            reason: "Cron job scheduling not yet supported — use OpenFang's ScheduleMode::Periodic instead".to_string(),
+            reason: "Cron job scheduling not yet supported — use Tapthe.ai's ScheduleMode::Periodic instead".to_string(),
         });
     }
 
@@ -2472,7 +2472,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
         report.skipped.push(SkippedItem {
             kind: ItemKind::Config,
             name: "hooks".to_string(),
-            reason: "Webhook hooks not supported — use OpenFang's event system instead".to_string(),
+            reason: "Webhook hooks not supported — use Tapthe.ai's event system instead".to_string(),
         });
     }
 
@@ -2494,7 +2494,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
                 report.skipped.push(SkippedItem {
                     kind: ItemKind::Skill,
                     name: format!("{} skill entries", entries.len()),
-                    reason: "Skills must be reinstalled via `openfang skill install`".to_string(),
+                    reason: "Skills must be reinstalled via `tapthe-ai skill install`".to_string(),
                 });
             }
         }
@@ -2514,7 +2514,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
         report.skipped.push(SkippedItem {
             kind: ItemKind::Memory,
             name: "memory-search/index.db".to_string(),
-            reason: "SQLite vector index not portable — OpenFang will rebuild embeddings"
+            reason: "SQLite vector index not portable — Tapthe.ai will rebuild embeddings"
                 .to_string(),
         });
     }
@@ -2534,7 +2534,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
         report.skipped.push(SkippedItem {
             kind: ItemKind::Config,
             name: "session".to_string(),
-            reason: "Session scope config differs — OpenFang uses per-agent sessions by default"
+            reason: "Session scope config differs — Tapthe.ai uses per-agent sessions by default"
                 .to_string(),
         });
     }
@@ -2545,7 +2545,7 @@ fn report_skipped_features(root: &OpenClawRoot, source: &Path, report: &mut Migr
             kind: ItemKind::Config,
             name: "memory".to_string(),
             reason:
-                "Memory backend config not migrated — OpenFang uses SQLite with vector embeddings"
+                "Memory backend config not migrated — Tapthe.ai uses SQLite with vector embeddings"
                     .to_string(),
         });
     }
@@ -2607,21 +2607,21 @@ fn migrate_legacy_config(
         .api_key_env
         .unwrap_or_else(|| default_api_key_env(&provider));
 
-    let of_config = OpenFangConfig {
-        default_model: OpenFangModelConfig {
+    let of_config = Tapthe.aiConfig {
+        default_model: Tapthe.aiModelConfig {
             provider,
             model: oc_config.model,
             api_key_env,
             base_url: oc_config.base_url,
         },
-        memory: OpenFangMemorySection {
+        memory: Tapthe.aiMemorySection {
             decay_rate: oc_config
                 .memory
                 .as_ref()
                 .and_then(|m| m.decay_rate)
                 .unwrap_or(0.05),
         },
-        network: OpenFangNetworkSection {
+        network: Tapthe.aiNetworkSection {
             listen_addr: "127.0.0.1:4200".to_string(),
         },
         channels,
@@ -2630,7 +2630,7 @@ fn migrate_legacy_config(
     let toml_str = toml::to_string_pretty(&of_config)?;
 
     let config_content = format!(
-        "# OpenFang Agent OS configuration\n\
+        "# Tapthe.ai Agent OS configuration\n\
          # Migrated from OpenClaw on {}\n\n\
          {toml_str}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
@@ -2898,7 +2898,7 @@ fn parse_legacy_channels(
                 report.skipped.push(SkippedItem {
                     kind: ItemKind::Channel,
                     name: "bluebubbles".to_string(),
-                    reason: "No OpenFang adapter available — consider using the iMessage channel instead".to_string(),
+                    reason: "No Tapthe.ai adapter available — consider using the iMessage channel instead".to_string(),
                 });
             }
             _ => {}
@@ -2962,7 +2962,7 @@ fn migrate_legacy_agents(
 
                 for tool in &unmapped_tools {
                     report.warnings.push(format!(
-                        "Agent '{agent_name}': tool '{tool}' has no OpenFang equivalent and was skipped"
+                        "Agent '{agent_name}': tool '{tool}' has no Tapthe.ai equivalent and was skipped"
                     ));
                 }
 
@@ -2995,7 +2995,7 @@ fn convert_legacy_agent(
     let tools: Vec<String> = if !oc.tools.is_empty() {
         let mut mapped = Vec::new();
         for t in &oc.tools {
-            if is_known_openfang_tool(t) {
+            if is_known_tapthe_ai_tool(t) {
                 mapped.push(t.clone());
             } else if let Some(of_name) = map_tool_name(t) {
                 mapped.push(of_name.to_string());
@@ -3023,7 +3023,7 @@ fn convert_legacy_agent(
 
     let system_prompt = oc.system_prompt.unwrap_or_else(|| {
         format!(
-            "You are {}, an AI agent running on the OpenFang Agent OS. {}",
+            "You are {}, an AI agent running on the Tapthe.ai Agent OS. {}",
             oc.name,
             if oc.description.is_empty() {
                 "You are helpful, concise, and accurate.".to_string()
@@ -3044,7 +3044,7 @@ fn convert_legacy_agent(
 
     let mut toml_str = String::new();
     toml_str.push_str(&format!(
-        "# OpenFang agent manifest\n# Migrated from OpenClaw agent '{}'\n\n",
+        "# Tapthe.ai agent manifest\n# Migrated from OpenClaw agent '{}'\n\n",
         oc.name
     ));
     toml_str.push_str(&format!("name = \"{}\"\n", oc.name));
@@ -3053,7 +3053,7 @@ fn convert_legacy_agent(
         "description = \"{}\"\n",
         oc.description.replace('"', "\\\"")
     ));
-    toml_str.push_str("author = \"openfang\"\n");
+    toml_str.push_str("author = \"tapthe-ai\"\n");
     toml_str.push_str("module = \"builtin:chat\"\n");
 
     if !oc.tags.is_empty() {
@@ -3236,7 +3236,7 @@ fn scan_legacy_skills(source: &Path, report: &mut MigrationReport) {
                     report.skipped.push(SkippedItem {
                         kind: ItemKind::Skill,
                         name: name.clone(),
-                        reason: "Node.js skill — run with `openfang skill install` after migration"
+                        reason: "Node.js skill — run with `tapthe-ai skill install` after migration"
                             .to_string(),
                     });
                 } else {
@@ -3381,7 +3381,7 @@ mod tests {
       host: "irc.libera.chat",
       port: 6697,
       tls: true,
-      nick: "openfang-bot",
+      nick: "tapthe-ai-bot",
       password: "irc-secret-pw",
       channels: ["#dev", "#general"]
     },
@@ -4409,12 +4409,12 @@ mod tests {
     }
 
     #[test]
-    fn test_is_known_openfang_tool() {
-        assert!(is_known_openfang_tool("file_read"));
-        assert!(is_known_openfang_tool("shell_exec"));
-        assert!(is_known_openfang_tool("web_fetch"));
-        assert!(!is_known_openfang_tool("Read"));
-        assert!(!is_known_openfang_tool("unknown"));
+    fn test_is_known_tapthe_ai_tool() {
+        assert!(is_known_tapthe_ai_tool("file_read"));
+        assert!(is_known_tapthe_ai_tool("shell_exec"));
+        assert!(is_known_tapthe_ai_tool("web_fetch"));
+        assert!(!is_known_tapthe_ai_tool("Read"));
+        assert!(!is_known_tapthe_ai_tool("unknown"));
     }
 
     #[test]

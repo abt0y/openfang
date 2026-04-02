@@ -1,21 +1,21 @@
 [package]
-name = "openfang-api"
+name = "tapthe-ai-api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "HTTP/WebSocket API server for the OpenFang Agent OS daemon"
+description = "HTTP/WebSocket API server for the Tapthe.ai Agent OS daemon"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
-openfang-kernel = { path = "../openfang-kernel" }
-openfang-runtime = { path = "../openfang-runtime" }
-openfang-memory = { path = "../openfang-memory" }
-openfang-channels = { path = "../openfang-channels" }
-openfang-wire = { path = "../openfang-wire" }
-openfang-skills = { path = "../openfang-skills" }
-openfang-hands = { path = "../openfang-hands" }
-openfang-extensions = { path = "../openfang-extensions" }
-openfang-migrate = { path = "../openfang-migrate" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
+tapthe-ai-kernel = { path = "../tapthe-ai-kernel" }
+tapthe-ai-runtime = { path = "../tapthe-ai-runtime" }
+tapthe-ai-memory = { path = "../tapthe-ai-memory" }
+tapthe-ai-channels = { path = "../tapthe-ai-channels" }
+tapthe-ai-wire = { path = "../tapthe-ai-wire" }
+tapthe-ai-skills = { path = "../tapthe-ai-skills" }
+tapthe-ai-hands = { path = "../tapthe-ai-hands" }
+tapthe-ai-extensions = { path = "../tapthe-ai-extensions" }
+tapthe-ai-migrate = { path = "../tapthe-ai-migrate" }
 dashmap = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }

@@ -1,5 +1,5 @@
 {
-  description = "The OpenFang Agent OS";
+  description = "The Tapthe.ai Agent OS";
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -27,7 +27,7 @@
           openssl
           pkg-config
         ];
-        rust-project.crates.openfang-desktop.crane.args.buildInputs = with pkgs; [
+        rust-project.crates.tapthe-ai-desktop.crane.args.buildInputs = with pkgs; [
           atk
           glib
           gtk3
@@ -36,17 +36,17 @@
           webkitgtk_4_1
         ];
 
-        packages.default = self'.packages.openfang-cli;
+        packages.default = self'.packages.tapthe-ai-cli;
         apps = {
-          openfang-cli = {
-            program = "${self'.packages.openfang-cli}/bin/openfang";
-            meta.description = "CLI tool for the OpenFang Agent OS";
+          tapthe-ai-cli = {
+            program = "${self'.packages.tapthe-ai-cli}/bin/tapthe-ai";
+            meta.description = "CLI tool for the Tapthe.ai Agent OS";
           };
-          openfang-desktop = {
-            program = "${self'.packages.openfang-desktop}/bin/openfang-desktop";
-            meta.description = "Native desktop application for the OpenFang Agent OS (Tauri 2.0)";
+          tapthe-ai-desktop = {
+            program = "${self'.packages.tapthe-ai-desktop}/bin/tapthe-ai-desktop";
+            meta.description = "Native desktop application for the Tapthe.ai Agent OS (Tauri 2.0)";
           };
-          default = self'.apps.openfang-cli;
+          default = self'.apps.tapthe-ai-cli;
         };
       };
       flake = {

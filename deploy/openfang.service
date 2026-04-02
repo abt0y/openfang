@@ -1,27 +1,27 @@
 [Unit]
-Description=OpenFang Agent OS Daemon
-Documentation=https://github.com/openfang-ai/openfang
+Description=Tapthe.ai Agent OS Daemon
+Documentation=https://github.com/tapthe-ai-ai/tapthe-ai
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=openfang
-Group=openfang
-ExecStart=/usr/local/bin/openfang start
+User=tapthe-ai
+Group=tapthe-ai
+ExecStart=/usr/local/bin/tapthe-ai start
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 
 # Environment
-EnvironmentFile=-/etc/openfang/env
-WorkingDirectory=/var/lib/openfang
+EnvironmentFile=-/etc/tapthe-ai/env
+WorkingDirectory=/var/lib/tapthe-ai
 
 # Security hardening
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/openfang
+ReadWritePaths=/var/lib/tapthe-ai
 PrivateTmp=true
 ProtectKernelTunables=true
 ProtectKernelModules=true

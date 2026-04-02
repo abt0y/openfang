@@ -1,4 +1,4 @@
-//! Skill system for OpenFang.
+//! Skill system for Tapthe.ai.
 //!
 //! Skills are pluggable tool bundles that extend agent capabilities.
 //! They can be:
@@ -69,9 +69,9 @@ pub enum SkillRuntime {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum SkillSource {
-    /// Built into OpenFang or manually installed.
+    /// Built into Tapthe.ai or manually installed.
     Native,
-    /// Bundled at compile time (ships with OpenFang binary).
+    /// Bundled at compile time (ships with Tapthe.ai binary).
     Bundled,
     /// Converted from OpenClaw format.
     OpenClaw,
@@ -198,7 +198,7 @@ mod tests {
 name = "web-summarizer"
 version = "0.1.0"
 description = "Summarizes any web page into bullet points"
-author = "openfang-community"
+author = "tapthe-ai-community"
 license = "MIT"
 tags = ["web", "summarizer", "research"]
 

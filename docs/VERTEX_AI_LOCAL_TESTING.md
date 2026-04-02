@@ -11,7 +11,7 @@
 ### Option 1: Use the Batch File
 
 ```batch
-# Run this from the openfang directory:
+# Run this from the tapthe-ai directory:
 start-vertex.bat
 ```
 
@@ -20,13 +20,13 @@ This automatically:
 - Sets `GOOGLE_APPLICATION_CREDENTIALS`
 - Pre-fetches OAuth token via `gcloud auth print-access-token`
 - Sets `VERTEX_AI_ACCESS_TOKEN` env var
-- Starts OpenFang
+- Starts Tapthe.ai
 
 ### Option 2: Manual PowerShell Setup
 
 ```powershell
 # 1. Kill any existing instances
-taskkill /F /IM openfang.exe 2>$null
+taskkill /F /IM tapthe-ai.exe 2>$null
 
 # 2. Set environment variables (CRITICAL: clear proxy!)
 $env:HTTPS_PROXY = ""
@@ -36,9 +36,9 @@ $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\Users\at384\Downloads\osc\dbg-grcit-de
 # 3. Pre-fetch OAuth token (IMPORTANT: avoids subprocess issues on Windows)
 $env:VERTEX_AI_ACCESS_TOKEN = gcloud auth print-access-token
 
-# 4. Start OpenFang
-cd C:\Users\at384\Downloads\osc\dllm\openfang
-.\target\debug\openfang.exe start
+# 4. Start Tapthe.ai
+cd C:\Users\at384\Downloads\osc\dllm\tapthe-ai
+.\target\debug\tapthe-ai.exe start
 ```
 
 ## Testing the API
@@ -65,7 +65,7 @@ $response = Invoke-RestMethod -Uri "http://127.0.0.1:50051/v1/chat/completions" 
 Write-Host $response.choices[0].message.content
 ```
 
-### Direct Vertex AI Test (Bypass OpenFang)
+### Direct Vertex AI Test (Bypass Tapthe.ai)
 
 ```powershell
 $env:HTTPS_PROXY = ""
@@ -83,7 +83,7 @@ Invoke-RestMethod -Uri $url -Method POST -Headers @{Authorization = "Bearer $tok
 
 ## Configuration
 
-### ~/.openfang/config.toml
+### ~/.tapthe-ai/config.toml
 
 ```toml
 [default_model]
@@ -120,7 +120,7 @@ $env:VERTEX_AI_ACCESS_TOKEN = gcloud auth print-access-token
 
 ### "Connection refused"
 
-**Cause:** OpenFang not running or wrong port.
+**Cause:** Tapthe.ai not running or wrong port.
 
 **Solution:** Ensure server is running on port 50051:
 ```powershell
@@ -139,20 +139,20 @@ $env:VERTEX_AI_ACCESS_TOKEN = gcloud auth print-access-token
 ## Build Commands
 
 ```powershell
-cd C:\Users\at384\Downloads\osc\dllm\openfang
+cd C:\Users\at384\Downloads\osc\dllm\tapthe-ai
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
 
 # Debug build (faster compilation)
-cargo build -p openfang-cli
+cargo build -p tapthe-ai-cli
 
 # Run tests
-cargo test -p openfang-runtime --lib vertex
+cargo test -p tapthe-ai-runtime --lib vertex
 
 # Check formatting
-cargo fmt --check -p openfang-runtime
+cargo fmt --check -p tapthe-ai-runtime
 
 # Run clippy
-cargo clippy -p openfang-runtime --lib -- -W warnings
+cargo clippy -p tapthe-ai-runtime --lib -- -W warnings
 ```
 
 ## API Endpoints
@@ -167,5 +167,5 @@ cargo clippy -p openfang-runtime --lib -- -W warnings
 
 ## Files Modified in PR
 
-- `crates/openfang-runtime/src/drivers/vertex.rs` (NEW - ~790 lines)
-- `crates/openfang-runtime/src/drivers/mod.rs` (+62 lines)
+- `crates/tapthe-ai-runtime/src/drivers/vertex.rs` (NEW - ~790 lines)
+- `crates/tapthe-ai-runtime/src/drivers/mod.rs` (+62 lines)

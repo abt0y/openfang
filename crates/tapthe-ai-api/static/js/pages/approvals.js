@@ -1,4 +1,4 @@
-// OpenFang Approvals Page — Execution approval queue for sensitive agent actions
+// Tapthe.ai Approvals Page — Execution approval queue for sensitive agent actions
 'use strict';
 
 function approvalsPage() {
@@ -38,7 +38,7 @@ function approvalsPage() {
       this.loading = true;
       this.loadError = '';
       try {
-        var data = await OpenFangAPI.get('/api/approvals');
+        var data = await TaptheAiAPI.get('/api/approvals');
         this.approvals = data.approvals || [];
       } catch(e) {
         this.loadError = e.message || 'Could not load approvals.';
@@ -48,23 +48,23 @@ function approvalsPage() {
 
     async approve(id) {
       try {
-        await OpenFangAPI.post('/api/approvals/' + id + '/approve', {});
-        OpenFangToast.success('Approved');
+        await TaptheAiAPI.post('/api/approvals/' + id + '/approve', {});
+        TaptheAiToast.success('Approved');
         await this.loadData();
       } catch(e) {
-        OpenFangToast.error(e.message);
+        TaptheAiToast.error(e.message);
       }
     },
 
     async reject(id) {
       var self = this;
-      OpenFangToast.confirm('Reject Action', 'Are you sure you want to reject this action?', async function() {
+      TaptheAiToast.confirm('Reject Action', 'Are you sure you want to reject this action?', async function() {
         try {
-          await OpenFangAPI.post('/api/approvals/' + id + '/reject', {});
-          OpenFangToast.success('Rejected');
+          await TaptheAiAPI.post('/api/approvals/' + id + '/reject', {});
+          TaptheAiToast.success('Rejected');
           await self.loadData();
         } catch(e) {
-          OpenFangToast.error(e.message);
+          TaptheAiToast.error(e.message);
         }
       });
     },

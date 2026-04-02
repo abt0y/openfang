@@ -4,13 +4,13 @@
 //! 1. **Node.js/TypeScript modules** — `package.json` + `index.js` (code skills)
 //! 2. **SKILL.md Markdown files** — YAML frontmatter + Markdown body (prompt-only skills)
 //!
-//! This module detects both formats and converts them to OpenFang `SkillManifest`.
+//! This module detects both formats and converts them to Tapthe.ai `SkillManifest`.
 
 use crate::{
     SkillError, SkillManifest, SkillMeta, SkillRequirements, SkillRuntime, SkillRuntimeConfig,
     SkillSource, SkillToolDef, SkillTools,
 };
-use openfang_types::tool_compat;
+use tapthe_ai_types::tool_compat;
 use serde::Deserialize;
 use std::path::Path;
 use tracing::info;
@@ -83,14 +83,14 @@ pub struct OpenClawDispatch {
     pub disable_model_invocation: bool,
 }
 
-/// Result of converting a SKILL.md into OpenFang format.
+/// Result of converting a SKILL.md into Tapthe.ai format.
 #[derive(Debug, Clone)]
 pub struct ConvertedSkillMd {
     /// The generated skill manifest.
     pub manifest: SkillManifest,
     /// Markdown body (prompt context for the LLM).
     pub prompt_context: String,
-    /// Tool name translations applied (openclaw_name → openfang_name).
+    /// Tool name translations applied (openclaw_name → tapthe_ai_name).
     pub tool_translations: Vec<(String, String)>,
     /// Required system binaries.
     pub required_bins: Vec<String>,
@@ -157,7 +157,7 @@ pub fn parse_skillmd_str(content: &str) -> Result<(SkillMdFrontmatter, String), 
     Ok((frontmatter, body))
 }
 
-/// Full conversion of a SKILL.md directory to OpenFang format.
+/// Full conversion of a SKILL.md directory to Tapthe.ai format.
 ///
 /// Most SKILL.md skills are prompt-only (no executable code). The Markdown body
 /// is stored as `prompt_context` and injected into the LLM's system prompt.
@@ -187,17 +187,17 @@ pub fn convert_skillmd(dir: &Path) -> Result<ConvertedSkillMd, SkillError> {
             required_env = requires.env.clone();
         }
 
-        // Convert commands to OpenFang tool definitions
+        // Convert commands to Tapthe.ai tool definitions
         for cmd in &meta.commands {
             if cmd.name.is_empty() {
                 continue;
             }
 
             // Translate tool name if it's a known OpenClaw name
-            let openfang_name = if let Some(mapped) = tool_compat::map_tool_name(&cmd.name) {
+            let tapthe_ai_name = if let Some(mapped) = tool_compat::map_tool_name(&cmd.name) {
                 tool_translations.push((cmd.name.clone(), mapped.to_string()));
                 mapped.to_string()
-            } else if tool_compat::is_known_openfang_tool(&cmd.name) {
+            } else if tool_compat::is_known_tapthe_ai_tool(&cmd.name) {
                 cmd.name.clone()
             } else {
                 // Custom command — keep original name, normalize to snake_case
@@ -205,7 +205,7 @@ pub fn convert_skillmd(dir: &Path) -> Result<ConvertedSkillMd, SkillError> {
             };
 
             tools.push(SkillToolDef {
-                name: openfang_name,
+                name: tapthe_ai_name,
                 description: if cmd.description.is_empty() {
                     format!("Execute {} command", cmd.name)
                 } else {
@@ -265,7 +265,7 @@ pub fn convert_skillmd(dir: &Path) -> Result<ConvertedSkillMd, SkillError> {
     })
 }
 
-/// Convert an in-memory SKILL.md string into OpenFang format.
+/// Convert an in-memory SKILL.md string into Tapthe.ai format.
 ///
 /// Same as `convert_skillmd()` but works from a string rather than a directory.
 /// Used by the bundled skills system for compile-time embedded content.
@@ -294,17 +294,17 @@ pub fn convert_skillmd_str(name_hint: &str, content: &str) -> Result<ConvertedSk
                 continue;
             }
 
-            let openfang_name = if let Some(mapped) = tool_compat::map_tool_name(&cmd.name) {
+            let tapthe_ai_name = if let Some(mapped) = tool_compat::map_tool_name(&cmd.name) {
                 tool_translations.push((cmd.name.clone(), mapped.to_string()));
                 mapped.to_string()
-            } else if tool_compat::is_known_openfang_tool(&cmd.name) {
+            } else if tool_compat::is_known_tapthe_ai_tool(&cmd.name) {
                 cmd.name.clone()
             } else {
                 cmd.name.replace('-', "_")
             };
 
             tools.push(SkillToolDef {
-                name: openfang_name,
+                name: tapthe_ai_name,
                 description: if cmd.description.is_empty() {
                     format!("Execute {} command", cmd.name)
                 } else {
@@ -327,7 +327,7 @@ pub fn convert_skillmd_str(name_hint: &str, content: &str) -> Result<ConvertedSk
             name: skill_name,
             version: "0.1.0".to_string(),
             description: frontmatter.description.clone(),
-            author: "OpenFang".to_string(),
+            author: "Tapthe.ai".to_string(),
             license: "Apache-2.0".to_string(),
             tags: vec!["bundled".to_string(), "prompt-only".to_string()],
         },
@@ -362,7 +362,7 @@ pub fn detect_openclaw_skill(dir: &Path) -> bool {
             || dir.join("dist").join("index.js").exists())
 }
 
-/// Convert an OpenClaw Node.js skill directory into an OpenFang SkillManifest.
+/// Convert an OpenClaw Node.js skill directory into an Tapthe.ai SkillManifest.
 ///
 /// Reads package.json to extract name, version, description, and infers tool definitions.
 pub fn convert_openclaw_skill(dir: &Path) -> Result<SkillManifest, SkillError> {
@@ -458,8 +458,8 @@ fn extract_tools_from_openclaw_meta(meta: &serde_json::Value) -> Vec<SkillToolDe
     tools
 }
 
-/// Write an OpenFang skill.toml manifest for an OpenClaw skill.
-pub fn write_openfang_manifest(dir: &Path, manifest: &SkillManifest) -> Result<(), SkillError> {
+/// Write an Tapthe.ai skill.toml manifest for an OpenClaw skill.
+pub fn write_tapthe_ai_manifest(dir: &Path, manifest: &SkillManifest) -> Result<(), SkillError> {
     let toml_str = toml::to_string_pretty(manifest)
         .map_err(|e| SkillError::InvalidManifest(format!("TOML serialize: {e}")))?;
     std::fs::write(dir.join("skill.toml"), toml_str)?;

@@ -1,8 +1,8 @@
 //! Credential Vault — AES-256-GCM encrypted secret storage.
 //!
-//! Stores secrets in `~/.openfang/vault.enc`, with the master key sourced from
+//! Stores secrets in `~/.tapthe-ai/vault.enc`, with the master key sourced from
 //! the OS keyring (Windows Credential Manager / macOS Keychain / Linux Secret Service)
-//! or the `OPENFANG_VAULT_KEY` env var for headless/CI environments.
+//! or the `TAPTHE_AI_VAULT_KEY` env var for headless/CI environments.
 
 use crate::{ExtensionError, ExtensionResult};
 use aes_gcm::aead::{Aead, KeyInit, OsRng};
@@ -20,12 +20,12 @@ use zeroize::Zeroizing;
 
 /// Service name for OS keyring storage.
 #[cfg(not(test))]
-const KEYRING_SERVICE: &str = "openfang-vault";
+const KEYRING_SERVICE: &str = "tapthe-ai-vault";
 /// Username for OS keyring (used by platform keyring backends).
 #[allow(dead_code)]
 const KEYRING_USER: &str = "master-key";
 /// Env var fallback for vault key.
-const VAULT_KEY_ENV: &str = "OPENFANG_VAULT_KEY";
+const VAULT_KEY_ENV: &str = "TAPTHE_AI_VAULT_KEY";
 /// Salt length for Argon2.
 const SALT_LEN: usize = 16;
 /// Nonce length for AES-256-GCM.
@@ -136,7 +136,7 @@ impl CredentialVault {
         }
         if !self.path.exists() {
             return Err(ExtensionError::Vault(
-                "Vault not initialized. Run `openfang vault init`.".to_string(),
+                "Vault not initialized. Run `tapthe-ai vault init`.".to_string(),
             ));
         }
 
@@ -216,7 +216,7 @@ impl CredentialVault {
         }
         if !self.path.exists() {
             return Err(ExtensionError::Vault(
-                "Vault not initialized. Run `openfang vault init`.".to_string(),
+                "Vault not initialized. Run `tapthe-ai vault init`.".to_string(),
             ));
         }
         self.load(&master_key)?;
@@ -432,7 +432,7 @@ fn store_keyring_key(key_b64: &str) -> Result<(), String> {
         // than plaintext env vars.
         let keyring_path = dirs::data_local_dir()
             .unwrap_or_else(std::env::temp_dir)
-            .join("openfang")
+            .join("tapthe-ai")
             .join(".keyring");
         std::fs::create_dir_all(keyring_path.parent().unwrap())
             .map_err(|e| format!("mkdir: {e}"))?;
@@ -468,7 +468,7 @@ fn load_keyring_key() -> Result<Zeroizing<String>, String> {
     {
         let keyring_path = dirs::data_local_dir()
             .unwrap_or_else(std::env::temp_dir)
-            .join("openfang")
+            .join("tapthe-ai")
             .join(".keyring");
         if !keyring_path.exists() {
             return Err("Keyring file not found".to_string());
@@ -510,7 +510,7 @@ fn machine_fingerprint() -> Vec<u8> {
     if let Ok(host) = std::env::var("COMPUTERNAME").or_else(|_| std::env::var("HOSTNAME")) {
         hasher.update(host.as_bytes());
     }
-    hasher.update(b"openfang-vault-v1");
+    hasher.update(b"tapthe-ai-vault-v1");
     hasher.finalize().to_vec()
 }
 

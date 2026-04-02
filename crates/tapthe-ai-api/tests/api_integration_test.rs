@@ -1,18 +1,18 @@
-//! Real HTTP integration tests for the OpenFang API.
+//! Real HTTP integration tests for the Tapthe.ai API.
 //!
 //! These tests boot a real kernel, start a real axum HTTP server on a random
 //! port, and hit actual endpoints with reqwest.  No mocking.
 //!
 //! Tests that require an LLM API call are gated behind GROQ_API_KEY.
 //!
-//! Run: cargo test -p openfang-api --test api_integration_test -- --nocapture
+//! Run: cargo test -p tapthe-ai-api --test api_integration_test -- --nocapture
 
 use axum::Router;
-use openfang_api::middleware;
-use openfang_api::routes::{self, AppState};
-use openfang_api::ws;
-use openfang_kernel::OpenFangKernel;
-use openfang_types::config::{DefaultModelConfig, KernelConfig};
+use tapthe_ai_api::middleware;
+use tapthe_ai_api::routes::{self, AppState};
+use tapthe_ai_api::ws;
+use tapthe_ai_kernel::TaptheAiKernel;
+use tapthe_ai_types::config::{DefaultModelConfig, KernelConfig};
 use std::sync::Arc;
 use std::time::Instant;
 use tower_http::cors::CorsLayer;
@@ -65,7 +65,7 @@ async fn start_test_server_with_provider(
         ..KernelConfig::default()
     };
 
-    let kernel = OpenFangKernel::boot_with_config(config).expect("Kernel should boot");
+    let kernel = TaptheAiKernel::boot_with_config(config).expect("Kernel should boot");
     let kernel = Arc::new(kernel);
     kernel.set_self_handle();
 
@@ -77,7 +77,7 @@ async fn start_test_server_with_provider(
         channels_config: tokio::sync::RwLock::new(Default::default()),
         shutdown_notify: Arc::new(tokio::sync::Notify::new()),
         clawhub_cache: dashmap::DashMap::new(),
-        provider_probe_cache: openfang_runtime::provider_health::ProbeCache::new(),
+        provider_probe_cache: tapthe_ai_runtime::provider_health::ProbeCache::new(),
         budget_config: Arc::new(tokio::sync::RwLock::new(Default::default())),
     });
 
@@ -695,7 +695,7 @@ async fn start_test_server_with_auth(api_key: &str) -> TestServer {
         ..KernelConfig::default()
     };
 
-    let kernel = OpenFangKernel::boot_with_config(config).expect("Kernel should boot");
+    let kernel = TaptheAiKernel::boot_with_config(config).expect("Kernel should boot");
     let kernel = Arc::new(kernel);
     kernel.set_self_handle();
 
@@ -707,7 +707,7 @@ async fn start_test_server_with_auth(api_key: &str) -> TestServer {
         channels_config: tokio::sync::RwLock::new(Default::default()),
         shutdown_notify: Arc::new(tokio::sync::Notify::new()),
         clawhub_cache: dashmap::DashMap::new(),
-        provider_probe_cache: openfang_runtime::provider_health::ProbeCache::new(),
+        provider_probe_cache: tapthe_ai_runtime::provider_health::ProbeCache::new(),
         budget_config: Arc::new(tokio::sync::RwLock::new(Default::default())),
     });
 

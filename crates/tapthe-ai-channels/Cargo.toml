@@ -1,12 +1,12 @@
 [package]
-name = "openfang-channels"
+name = "tapthe-ai-channels"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Channel Bridge Layer — pluggable messaging integrations for OpenFang"
+description = "Channel Bridge Layer — pluggable messaging integrations for Tapthe.ai"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

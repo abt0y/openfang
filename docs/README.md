@@ -1,6 +1,6 @@
-# OpenFang Documentation
+# Tapthe.ai Documentation
 
-Welcome to the OpenFang documentation. OpenFang is the open-source Agent Operating System -- 14 Rust crates, 40 channels, 60 skills, 20 LLM providers, 76 API endpoints, and 16 security systems in a single binary.
+Welcome to the Tapthe.ai documentation. Tapthe.ai is the open-source Agent Operating System -- 14 Rust crates, 40 channels, 60 skills, 20 LLM providers, 76 API endpoints, and 16 security systems in a single binary.
 
 ---
 
@@ -61,7 +61,7 @@ Welcome to the OpenFang documentation. OpenFang is the open-source Agent Operati
 
 ```bash
 export GROQ_API_KEY="your-key"
-openfang init && openfang start
+tapthe-ai init && tapthe-ai start
 # Open http://127.0.0.1:4200
 ```
 
@@ -85,10 +85,10 @@ openfang init && openfang start
 
 | Path | Description |
 |------|-------------|
-| `~/.openfang/config.toml` | Main configuration file |
-| `~/.openfang/data/openfang.db` | SQLite database |
-| `~/.openfang/skills/` | Installed skills |
-| `~/.openfang/daemon.json` | Daemon PID and port info |
+| `~/.tapthe-ai/config.toml` | Main configuration file |
+| `~/.tapthe-ai/data/tapthe-ai.db` | SQLite database |
+| `~/.tapthe-ai/skills/` | Installed skills |
+| `~/.tapthe-ai/daemon.json` | Daemon PID and port info |
 | `agents/` | Agent template manifests |
 
 ### Key Environment Variables

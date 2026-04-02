@@ -12,7 +12,7 @@
 use crate::registry::AgentRegistry;
 use chrono::Utc;
 use dashmap::DashMap;
-use openfang_types::agent::{AgentId, AgentState};
+use tapthe_ai_types::agent::{AgentId, AgentState};
 use tracing::{debug, warn};
 
 /// Default heartbeat check interval (seconds).
@@ -296,7 +296,7 @@ pub fn summarize(statuses: &[HeartbeatStatus]) -> HeartbeatSummary {
 mod tests {
     use super::*;
     use chrono::Duration;
-    use openfang_types::agent::*;
+    use tapthe_ai_types::agent::*;
     use std::collections::HashMap;
 
     /// Helper: build a minimal AgentEntry for heartbeat tests.

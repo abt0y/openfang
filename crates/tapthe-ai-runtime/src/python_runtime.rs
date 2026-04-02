@@ -15,7 +15,7 @@
 //! {"type": "response", "text": "...", "tool_calls": [...]}
 //! ```
 //!
-//! The Python SDK (`openfang_sdk.py`) provides a helper to handle this protocol.
+//! The Python SDK (`tapthe_ai_sdk.py`) provides a helper to handle this protocol.
 
 use std::path::Path;
 use std::process::Stdio;
@@ -160,8 +160,8 @@ pub async fn run_python_agent(
     cmd.env_clear();
 
     // Re-add ONLY safe, required vars
-    cmd.env("OPENFANG_AGENT_ID", agent_id);
-    cmd.env("OPENFANG_MESSAGE", message);
+    cmd.env("TAPTHE_AI_AGENT_ID", agent_id);
+    cmd.env("TAPTHE_AI_MESSAGE", message);
 
     // PATH — needed to find python stdlib / system tools
     if let Ok(path) = std::env::var("PATH") {

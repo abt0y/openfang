@@ -1,4 +1,4 @@
-// OpenFang Setup Wizard — First-run guided setup (Provider + Agent + Channel)
+// Tapthe.ai Setup Wizard — First-run guided setup (Provider + Agent + Channel)
 'use strict';
 
 /** Escape a string for use inside TOML triple-quoted strings ("""\n...\n"""). */
@@ -193,7 +193,7 @@ function wizardPage() {
       this.tryItMessages.push({ role: 'user', text: text });
       this.tryItSending = true;
       try {
-        var res = await OpenFangAPI.post('/api/agents/' + this.createdAgent.id + '/message', { message: text });
+        var res = await TaptheAiAPI.post('/api/agents/' + this.createdAgent.id + '/message', { message: text });
         this.tryItMessages.push({ role: 'agent', text: res.response || '(no response)' });
         localStorage.setItem('of-first-msg', 'true');
       } catch(e) {
@@ -320,7 +320,7 @@ function wizardPage() {
 
     async loadProviders() {
       try {
-        var data = await OpenFangAPI.get('/api/providers');
+        var data = await TaptheAiAPI.get('/api/providers');
         this.providers = data.providers || [];
       } catch(e) { this.providers = []; }
     },
@@ -382,21 +382,21 @@ function wizardPage() {
       if (!provider) return;
       var key = this.apiKeyInput.trim();
       if (!key) {
-        OpenFangToast.error('Please enter an API key');
+        TaptheAiToast.error('Please enter an API key');
         return;
       }
       this.savingKey = true;
       try {
-        await OpenFangAPI.post('/api/providers/' + encodeURIComponent(provider.id) + '/key', { key: key });
+        await TaptheAiAPI.post('/api/providers/' + encodeURIComponent(provider.id) + '/key', { key: key });
         this.apiKeyInput = '';
         this.keySaved = true;
         this.setupSummary.provider = provider.display_name;
-        OpenFangToast.success('API key saved for ' + provider.display_name);
+        TaptheAiToast.success('API key saved for ' + provider.display_name);
         await this.loadProviders();
         // Auto-test after saving
         await this.testKey();
       } catch(e) {
-        OpenFangToast.error('Failed to save key: ' + e.message);
+        TaptheAiToast.error('Failed to save key: ' + e.message);
       }
       this.savingKey = false;
     },
@@ -407,16 +407,16 @@ function wizardPage() {
       this.testingProvider = true;
       this.testResult = null;
       try {
-        var result = await OpenFangAPI.post('/api/providers/' + encodeURIComponent(provider.id) + '/test', {});
+        var result = await TaptheAiAPI.post('/api/providers/' + encodeURIComponent(provider.id) + '/test', {});
         this.testResult = result;
         if (result.status === 'ok') {
-          OpenFangToast.success(provider.display_name + ' connected (' + (result.latency_ms || '?') + 'ms)');
+          TaptheAiToast.success(provider.display_name + ' connected (' + (result.latency_ms || '?') + 'ms)');
         } else {
-          OpenFangToast.error(provider.display_name + ': ' + (result.error || 'Connection failed'));
+          TaptheAiToast.error(provider.display_name + ': ' + (result.error || 'Connection failed'));
         }
       } catch(e) {
         this.testResult = { status: 'error', error: e.message };
-        OpenFangToast.error('Test failed: ' + e.message);
+        TaptheAiToast.error('Test failed: ' + e.message);
       }
       this.testingProvider = false;
     },
@@ -425,20 +425,20 @@ function wizardPage() {
       this.testingProvider = true;
       this.testResult = null;
       try {
-        var result = await OpenFangAPI.post('/api/providers/claude-code/test', {});
+        var result = await TaptheAiAPI.post('/api/providers/claude-code/test', {});
         this.testResult = result;
         if (result.status === 'ok') {
           this.claudeCodeDetected = true;
           this.keySaved = true;
           this.setupSummary.provider = 'Claude Code';
-          OpenFangToast.success('Claude Code detected (' + (result.latency_ms || '?') + 'ms)');
+          TaptheAiToast.success('Claude Code detected (' + (result.latency_ms || '?') + 'ms)');
         } else {
           this.testResult = { status: 'error', error: 'Claude Code CLI not detected' };
-          OpenFangToast.error('Claude Code CLI not detected. Make sure you\'ve run: npm install -g @anthropic-ai/claude-code && claude auth');
+          TaptheAiToast.error('Claude Code CLI not detected. Make sure you\'ve run: npm install -g @anthropic-ai/claude-code && claude auth');
         }
       } catch(e) {
         this.testResult = { status: 'error', error: e.message };
-        OpenFangToast.error('Claude Code CLI not detected. Make sure you\'ve run: npm install -g @anthropic-ai/claude-code && claude auth');
+        TaptheAiToast.error('Claude Code CLI not detected. Make sure you\'ve run: npm install -g @anthropic-ai/claude-code && claude auth');
       }
       this.testingProvider = false;
     },
@@ -458,7 +458,7 @@ function wizardPage() {
       if (!tpl) return;
       var name = this.agentName.trim();
       if (!name) {
-        OpenFangToast.error('Please enter a name for your agent');
+        TaptheAiToast.error('Please enter a name for your agent');
         return;
       }
 
@@ -481,17 +481,17 @@ function wizardPage() {
 
       this.creatingAgent = true;
       try {
-        var res = await OpenFangAPI.post('/api/agents', { manifest_toml: toml });
+        var res = await TaptheAiAPI.post('/api/agents', { manifest_toml: toml });
         if (res.agent_id) {
           this.createdAgent = { id: res.agent_id, name: res.name || name };
           this.setupSummary.agent = res.name || name;
-          OpenFangToast.success('Agent "' + (res.name || name) + '" created');
+          TaptheAiToast.success('Agent "' + (res.name || name) + '" created');
           await Alpine.store('app').refreshAgents();
         } else {
-          OpenFangToast.error('Failed: ' + (res.error || 'Unknown error'));
+          TaptheAiToast.error('Failed: ' + (res.error || 'Unknown error'));
         }
       } catch(e) {
-        OpenFangToast.error('Failed to create agent: ' + e.message);
+        TaptheAiToast.error('Failed to create agent: ' + e.message);
       }
       this.creatingAgent = false;
     },
@@ -538,7 +538,7 @@ function wizardPage() {
       if (!ch) return;
       var token = this.channelToken.trim();
       if (!token) {
-        OpenFangToast.error('Please enter the ' + ch.token_label);
+        TaptheAiToast.error('Please enter the ' + ch.token_label);
         return;
       }
       this.configuringChannel = true;
@@ -546,12 +546,12 @@ function wizardPage() {
         var fields = {};
         fields[ch.token_env.toLowerCase()] = token;
         fields.token = token;
-        await OpenFangAPI.post('/api/channels/' + ch.name + '/configure', { fields: fields });
+        await TaptheAiAPI.post('/api/channels/' + ch.name + '/configure', { fields: fields });
         this.channelConfigured = true;
         this.setupSummary.channel = ch.display_name;
-        OpenFangToast.success(ch.display_name + ' configured and activated.');
+        TaptheAiToast.success(ch.display_name + ' configured and activated.');
       } catch(e) {
-        OpenFangToast.error('Failed: ' + (e.message || 'Unknown error'));
+        TaptheAiToast.error('Failed: ' + (e.message || 'Unknown error'));
       }
       this.configuringChannel = false;
     },
@@ -559,7 +559,7 @@ function wizardPage() {
     // ── Step 6: Finish ──
 
     finish() {
-      localStorage.setItem('openfang-onboarded', 'true');
+      localStorage.setItem('tapthe-ai-onboarded', 'true');
       Alpine.store('app').showOnboarding = false;
       // Navigate to agents with chat if an agent was created, otherwise overview
       if (this.createdAgent) {
@@ -572,7 +572,7 @@ function wizardPage() {
     },
 
     finishAndDismiss() {
-      localStorage.setItem('openfang-onboarded', 'true');
+      localStorage.setItem('tapthe-ai-onboarded', 'true');
       Alpine.store('app').showOnboarding = false;
       window.location.hash = 'overview';
     }

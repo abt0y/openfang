@@ -1,4 +1,4 @@
-//! Production middleware for the OpenFang API server.
+//! Production middleware for the Tapthe.ai API server.
 //!
 //! Provides:
 //! - Request ID generation and propagation
@@ -214,7 +214,7 @@ pub async fn auth(
         .unwrap_or_default()
 }
 
-/// Extract the `openfang_session` cookie value from a request.
+/// Extract the `tapthe_ai_session` cookie value from a request.
 fn extract_session_cookie(request: &Request<Body>) -> Option<String> {
     request
         .headers()
@@ -223,7 +223,7 @@ fn extract_session_cookie(request: &Request<Body>) -> Option<String> {
         .and_then(|cookies| {
             cookies.split(';').find_map(|c| {
                 c.trim()
-                    .strip_prefix("openfang_session=")
+                    .strip_prefix("tapthe_ai_session=")
                     .map(|v| v.to_string())
             })
         })

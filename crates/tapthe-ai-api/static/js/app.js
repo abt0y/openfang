@@ -1,4 +1,4 @@
-// OpenFang App — Alpine.js init, hash router, global store
+// Tapthe.ai App — Alpine.js init, hash router, global store
 'use strict';
 
 // Marked.js configuration
@@ -122,8 +122,8 @@ function toolIcon(toolName) {
 // Alpine.js global store
 document.addEventListener('alpine:init', function() {
   // Restore saved API key on load
-  var savedKey = localStorage.getItem('openfang-api-key');
-  if (savedKey) OpenFangAPI.setAuthToken(savedKey);
+  var savedKey = localStorage.getItem('tapthe-ai-api-key');
+  if (savedKey) TaptheAiAPI.setAuthToken(savedKey);
 
   Alpine.store('app', {
     agents: [],
@@ -137,7 +137,7 @@ document.addEventListener('alpine:init', function() {
     pendingApprovalCount: 0,
     lastPendingApprovalSignature: '',
     pendingAgent: null,
-    focusMode: localStorage.getItem('openfang-focus') === 'true',
+    focusMode: localStorage.getItem('tapthe-ai-focus') === 'true',
     showOnboarding: false,
     showAuthPrompt: false,
     authMode: 'apikey',
@@ -145,12 +145,12 @@ document.addEventListener('alpine:init', function() {
 
     toggleFocusMode() {
       this.focusMode = !this.focusMode;
-      localStorage.setItem('openfang-focus', this.focusMode);
+      localStorage.setItem('tapthe-ai-focus', this.focusMode);
     },
 
     async refreshAgents() {
       try {
-        var agents = await OpenFangAPI.get('/api/agents');
+        var agents = await TaptheAiAPI.get('/api/agents');
         this.agents = Array.isArray(agents) ? agents : [];
         this.agentCount = this.agents.length;
       } catch(e) { /* silent */ }
@@ -158,15 +158,15 @@ document.addEventListener('alpine:init', function() {
 
     async refreshApprovals() {
       try {
-        var data = await OpenFangAPI.get('/api/approvals');
+        var data = await TaptheAiAPI.get('/api/approvals');
         var approvals = Array.isArray(data) ? data : (data.approvals || []);
         var pending = approvals.filter(function(a) { return a.status === 'pending'; });
         var signature = pending
           .map(function(a) { return a.id; })
           .sort()
           .join(',');
-        if (pending.length > 0 && signature !== this.lastPendingApprovalSignature && typeof OpenFangToast !== 'undefined') {
-          OpenFangToast.warn('An agent is waiting for approval. Open Approvals to review.');
+        if (pending.length > 0 && signature !== this.lastPendingApprovalSignature && typeof TaptheAiToast !== 'undefined') {
+          TaptheAiToast.warn('An agent is waiting for approval. Open Approvals to review.');
         }
         this.pendingApprovalCount = pending.length;
         this.lastPendingApprovalSignature = signature;
@@ -175,7 +175,7 @@ document.addEventListener('alpine:init', function() {
 
     async checkStatus() {
       try {
-        var s = await OpenFangAPI.get('/api/status');
+        var s = await TaptheAiAPI.get('/api/status');
         this.connected = true;
         this.booting = false;
         this.lastError = '';
@@ -184,14 +184,14 @@ document.addEventListener('alpine:init', function() {
       } catch(e) {
         this.connected = false;
         this.lastError = e.message || 'Unknown error';
-        console.warn('[OpenFang] Status check failed:', e.message);
+        console.warn('[Tapthe.ai] Status check failed:', e.message);
       }
     },
 
     async checkOnboarding() {
-      if (localStorage.getItem('openfang-onboarded')) return;
+      if (localStorage.getItem('tapthe-ai-onboarded')) return;
       try {
-        var config = await OpenFangAPI.get('/api/config');
+        var config = await TaptheAiAPI.get('/api/config');
         var apiKey = config && config.api_key;
         var noKey = !apiKey || apiKey === 'not set' || apiKey === '';
         if (noKey && this.agentCount === 0) {
@@ -205,13 +205,13 @@ document.addEventListener('alpine:init', function() {
 
     dismissOnboarding() {
       this.showOnboarding = false;
-      localStorage.setItem('openfang-onboarded', 'true');
+      localStorage.setItem('tapthe-ai-onboarded', 'true');
     },
 
     async checkAuth() {
       try {
         // First check if session-based auth is configured
-        var authInfo = await OpenFangAPI.get('/api/auth/check');
+        var authInfo = await TaptheAiAPI.get('/api/auth/check');
         if (authInfo.mode === 'none') {
           // No session auth — fall back to API key detection
           this.authMode = 'apikey';
@@ -231,14 +231,14 @@ document.addEventListener('alpine:init', function() {
 
       // API key mode detection
       try {
-        await OpenFangAPI.get('/api/tools');
+        await TaptheAiAPI.get('/api/tools');
         this.showAuthPrompt = false;
       } catch(e) {
         if (e.message && (e.message.indexOf('Not authorized') >= 0 || e.message.indexOf('401') >= 0 || e.message.indexOf('Missing Authorization') >= 0 || e.message.indexOf('Unauthorized') >= 0)) {
-          var saved = localStorage.getItem('openfang-api-key');
+          var saved = localStorage.getItem('tapthe-ai-api-key');
           if (saved) {
-            OpenFangAPI.setAuthToken('');
-            localStorage.removeItem('openfang-api-key');
+            TaptheAiAPI.setAuthToken('');
+            localStorage.removeItem('tapthe-ai-api-key');
           }
           this.showAuthPrompt = true;
         }
@@ -247,38 +247,38 @@ document.addEventListener('alpine:init', function() {
 
     submitApiKey(key) {
       if (!key || !key.trim()) return;
-      OpenFangAPI.setAuthToken(key.trim());
-      localStorage.setItem('openfang-api-key', key.trim());
+      TaptheAiAPI.setAuthToken(key.trim());
+      localStorage.setItem('tapthe-ai-api-key', key.trim());
       this.showAuthPrompt = false;
       this.refreshAgents();
     },
 
     async sessionLogin(username, password) {
       try {
-        var result = await OpenFangAPI.post('/api/auth/login', { username: username, password: password });
+        var result = await TaptheAiAPI.post('/api/auth/login', { username: username, password: password });
         if (result.status === 'ok') {
           this.sessionUser = result.username;
           this.showAuthPrompt = false;
           this.refreshAgents();
         } else {
-          OpenFangToast.error(result.error || 'Login failed');
+          TaptheAiToast.error(result.error || 'Login failed');
         }
       } catch(e) {
-        OpenFangToast.error(e.message || 'Login failed');
+        TaptheAiToast.error(e.message || 'Login failed');
       }
     },
 
     async sessionLogout() {
       try {
-        await OpenFangAPI.post('/api/auth/logout');
+        await TaptheAiAPI.post('/api/auth/logout');
       } catch(e) { /* ignore */ }
       this.sessionUser = null;
       this.showAuthPrompt = true;
     },
 
     clearApiKey() {
-      OpenFangAPI.setAuthToken('');
-      localStorage.removeItem('openfang-api-key');
+      TaptheAiAPI.setAuthToken('');
+      localStorage.removeItem('tapthe-ai-api-key');
     }
   });
 });
@@ -287,13 +287,13 @@ document.addEventListener('alpine:init', function() {
 function app() {
   return {
     page: 'agents',
-    themeMode: localStorage.getItem('openfang-theme-mode') || 'system',
+    themeMode: localStorage.getItem('tapthe-ai-theme-mode') || 'system',
     theme: (() => {
-      var mode = localStorage.getItem('openfang-theme-mode') || 'system';
+      var mode = localStorage.getItem('tapthe-ai-theme-mode') || 'system';
       if (mode === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       return mode;
     })(),
-    sidebarCollapsed: localStorage.getItem('openfang-sidebar') === 'collapsed',
+    sidebarCollapsed: localStorage.getItem('tapthe-ai-sidebar') === 'collapsed',
     mobileMenuOpen: false,
     connected: false,
     wsConnected: false,
@@ -363,7 +363,7 @@ function app() {
       });
 
       // Connection state listener
-      OpenFangAPI.onConnectionChange(function(state) {
+      TaptheAiAPI.onConnectionChange(function(state) {
         Alpine.store('app').connectionState = state;
       });
 
@@ -386,7 +386,7 @@ function app() {
 
     setTheme(mode) {
       this.themeMode = mode;
-      localStorage.setItem('openfang-theme-mode', mode);
+      localStorage.setItem('tapthe-ai-theme-mode', mode);
       if (mode === 'system') {
         this.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       } else {
@@ -402,7 +402,7 @@ function app() {
 
     toggleSidebar() {
       this.sidebarCollapsed = !this.sidebarCollapsed;
-      localStorage.setItem('openfang-sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
+      localStorage.setItem('tapthe-ai-sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
     },
 
     async pollStatus() {
@@ -412,7 +412,7 @@ function app() {
       this.connected = store.connected;
       this.version = store.version;
       this.agentCount = store.agentCount;
-      this.wsConnected = OpenFangAPI.isWsConnected();
+      this.wsConnected = TaptheAiAPI.isWsConnected();
     }
   };
 }

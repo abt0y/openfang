@@ -1,4 +1,4 @@
-//! OpenFangKernel — assembles all subsystems and provides the main API.
+//! TaptheAiKernel — assembles all subsystems and provides the main API.
 
 use crate::auth::AuthManager;
 use crate::background::{self, BackgroundExecutor};
@@ -13,34 +13,34 @@ use crate::supervisor::Supervisor;
 use crate::triggers::{TriggerEngine, TriggerId, TriggerPattern};
 use crate::workflow::{StepAgent, Workflow, WorkflowEngine, WorkflowId, WorkflowRunId};
 
-use openfang_memory::MemorySubstrate;
-use openfang_runtime::agent_loop::{
+use tapthe_ai_memory::MemorySubstrate;
+use tapthe_ai_runtime::agent_loop::{
     run_agent_loop, run_agent_loop_streaming, strip_provider_prefix, AgentLoopResult,
 };
-use openfang_runtime::audit::AuditLog;
-use openfang_runtime::drivers;
-use openfang_runtime::kernel_handle::{self, KernelHandle};
-use openfang_runtime::llm_driver::{
+use tapthe_ai_runtime::audit::AuditLog;
+use tapthe_ai_runtime::drivers;
+use tapthe_ai_runtime::kernel_handle::{self, KernelHandle};
+use tapthe_ai_runtime::llm_driver::{
     CompletionRequest, CompletionResponse, DriverConfig, LlmDriver, LlmError, StreamEvent,
 };
-use openfang_runtime::python_runtime::{self, PythonConfig};
-use openfang_runtime::routing::ModelRouter;
-use openfang_runtime::sandbox::{SandboxConfig, WasmSandbox};
-use openfang_runtime::tool_runner::builtin_tool_definitions;
-use openfang_types::agent::*;
-use openfang_types::capability::Capability;
-use openfang_types::config::{KernelConfig, OutputFormat};
-use openfang_types::error::OpenFangError;
-use openfang_types::event::*;
-use openfang_types::memory::Memory;
-use openfang_types::tool::ToolDefinition;
+use tapthe_ai_runtime::python_runtime::{self, PythonConfig};
+use tapthe_ai_runtime::routing::ModelRouter;
+use tapthe_ai_runtime::sandbox::{SandboxConfig, WasmSandbox};
+use tapthe_ai_runtime::tool_runner::builtin_tool_definitions;
+use tapthe_ai_types::agent::*;
+use tapthe_ai_types::capability::Capability;
+use tapthe_ai_types::config::{KernelConfig, OutputFormat};
+use tapthe_ai_types::error::TaptheAiError;
+use tapthe_ai_types::event::*;
+use tapthe_ai_types::memory::Memory;
+use tapthe_ai_types::tool::ToolDefinition;
 
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock, Weak};
 use tracing::{debug, info, warn};
 
-/// The main OpenFang kernel — coordinates all subsystems.
+/// The main Tapthe.ai kernel — coordinates all subsystems.
 /// Stub LLM driver used when no providers are configured.
 /// Returns a helpful error so the dashboard still boots and users can configure providers.
 struct StubDriver;
@@ -57,7 +57,7 @@ impl LlmDriver for StubDriver {
     }
 }
 
-pub struct OpenFangKernel {
+pub struct TaptheAiKernel {
     /// Kernel configuration.
     pub config: KernelConfig,
     /// Agent registry.
@@ -89,42 +89,42 @@ pub struct OpenFangKernel {
     /// RBAC authentication manager.
     pub auth: AuthManager,
     /// Model catalog registry (RwLock for auth status refresh from API).
-    pub model_catalog: std::sync::RwLock<openfang_runtime::model_catalog::ModelCatalog>,
+    pub model_catalog: std::sync::RwLock<tapthe_ai_runtime::model_catalog::ModelCatalog>,
     /// Skill registry for plugin skills (RwLock for hot-reload on install/uninstall).
-    pub skill_registry: std::sync::RwLock<openfang_skills::registry::SkillRegistry>,
+    pub skill_registry: std::sync::RwLock<tapthe_ai_skills::registry::SkillRegistry>,
     /// Tracks running agent tasks for cancellation support.
     pub running_tasks: dashmap::DashMap<AgentId, tokio::task::AbortHandle>,
     /// MCP server connections (lazily initialized at start_background_agents).
-    pub mcp_connections: tokio::sync::Mutex<Vec<openfang_runtime::mcp::McpConnection>>,
+    pub mcp_connections: tokio::sync::Mutex<Vec<tapthe_ai_runtime::mcp::McpConnection>>,
     /// MCP tool definitions cache (populated after connections are established).
     pub mcp_tools: std::sync::Mutex<Vec<ToolDefinition>>,
     /// A2A task store for tracking task lifecycle.
-    pub a2a_task_store: openfang_runtime::a2a::A2aTaskStore,
+    pub a2a_task_store: tapthe_ai_runtime::a2a::A2aTaskStore,
     /// Discovered external A2A agent cards.
-    pub a2a_external_agents: std::sync::Mutex<Vec<(String, openfang_runtime::a2a::AgentCard)>>,
+    pub a2a_external_agents: std::sync::Mutex<Vec<(String, tapthe_ai_runtime::a2a::AgentCard)>>,
     /// Web tools context (multi-provider search + SSRF-protected fetch + caching).
-    pub web_ctx: openfang_runtime::web_search::WebToolsContext,
+    pub web_ctx: tapthe_ai_runtime::web_search::WebToolsContext,
     /// Browser automation manager (Playwright bridge sessions).
-    pub browser_ctx: openfang_runtime::browser::BrowserManager,
+    pub browser_ctx: tapthe_ai_runtime::browser::BrowserManager,
     /// Media understanding engine (image description, audio transcription).
-    pub media_engine: openfang_runtime::media_understanding::MediaEngine,
+    pub media_engine: tapthe_ai_runtime::media_understanding::MediaEngine,
     /// Text-to-speech engine.
-    pub tts_engine: openfang_runtime::tts::TtsEngine,
+    pub tts_engine: tapthe_ai_runtime::tts::TtsEngine,
     /// Device pairing manager.
     pub pairing: crate::pairing::PairingManager,
     /// Embedding driver for vector similarity search (None = text fallback).
     pub embedding_driver:
-        Option<Arc<dyn openfang_runtime::embedding::EmbeddingDriver + Send + Sync>>,
+        Option<Arc<dyn tapthe_ai_runtime::embedding::EmbeddingDriver + Send + Sync>>,
     /// Hand registry — curated autonomous capability packages.
-    pub hand_registry: openfang_hands::registry::HandRegistry,
+    pub hand_registry: tapthe_ai_hands::registry::HandRegistry,
     /// Credential resolver — vault → dotenv → env var priority chain.
-    pub credential_resolver: std::sync::Mutex<openfang_extensions::credentials::CredentialResolver>,
+    pub credential_resolver: std::sync::Mutex<tapthe_ai_extensions::credentials::CredentialResolver>,
     /// Extension/integration registry (bundled MCP templates + install state).
-    pub extension_registry: std::sync::RwLock<openfang_extensions::registry::IntegrationRegistry>,
+    pub extension_registry: std::sync::RwLock<tapthe_ai_extensions::registry::IntegrationRegistry>,
     /// Integration health monitor.
-    pub extension_health: openfang_extensions::health::HealthMonitor,
+    pub extension_health: tapthe_ai_extensions::health::HealthMonitor,
     /// Effective MCP server list (manual config + extension-installed, merged at boot).
-    pub effective_mcp_servers: std::sync::RwLock<Vec<openfang_types::config::McpServerConfigEntry>>,
+    pub effective_mcp_servers: std::sync::RwLock<Vec<tapthe_ai_types::config::McpServerConfigEntry>>,
     /// Delivery receipt tracker (bounded LRU, max 10K entries).
     pub delivery_tracker: DeliveryTracker,
     /// Cron job scheduler.
@@ -132,41 +132,41 @@ pub struct OpenFangKernel {
     /// Execution approval manager.
     pub approval_manager: crate::approval::ApprovalManager,
     /// Agent bindings for multi-account routing (Mutex for runtime add/remove).
-    pub bindings: std::sync::Mutex<Vec<openfang_types::config::AgentBinding>>,
+    pub bindings: std::sync::Mutex<Vec<tapthe_ai_types::config::AgentBinding>>,
     /// Broadcast configuration.
-    pub broadcast: openfang_types::config::BroadcastConfig,
+    pub broadcast: tapthe_ai_types::config::BroadcastConfig,
     /// Auto-reply engine.
     pub auto_reply_engine: crate::auto_reply::AutoReplyEngine,
     /// Plugin lifecycle hook registry.
-    pub hooks: openfang_runtime::hooks::HookRegistry,
+    pub hooks: tapthe_ai_runtime::hooks::HookRegistry,
     /// Persistent process manager for interactive sessions (REPLs, servers).
-    pub process_manager: Arc<openfang_runtime::process_manager::ProcessManager>,
+    pub process_manager: Arc<tapthe_ai_runtime::process_manager::ProcessManager>,
     /// OFP peer registry — tracks connected peers (OnceLock for safe init after Arc creation).
-    pub peer_registry: OnceLock<openfang_wire::PeerRegistry>,
+    pub peer_registry: OnceLock<tapthe_ai_wire::PeerRegistry>,
     /// OFP peer node — the local networking node (OnceLock for safe init after Arc creation).
-    pub peer_node: OnceLock<Arc<openfang_wire::PeerNode>>,
+    pub peer_node: OnceLock<Arc<tapthe_ai_wire::PeerNode>>,
     /// Boot timestamp for uptime calculation.
     pub booted_at: std::time::Instant,
     /// WhatsApp Web gateway child process PID (for shutdown cleanup).
     pub whatsapp_gateway_pid: Arc<std::sync::Mutex<Option<u32>>>,
     /// Channel adapters registered at bridge startup (for proactive `channel_send` tool).
     pub channel_adapters:
-        dashmap::DashMap<String, Arc<dyn openfang_channels::types::ChannelAdapter>>,
+        dashmap::DashMap<String, Arc<dyn tapthe_ai_channels::types::ChannelAdapter>>,
     /// Hot-reloadable default model override (set via config hot-reload, read at agent spawn).
     pub default_model_override:
-        std::sync::RwLock<Option<openfang_types::config::DefaultModelConfig>>,
+        std::sync::RwLock<Option<tapthe_ai_types::config::DefaultModelConfig>>,
     /// Per-agent message locks — serializes LLM calls for the same agent to prevent
     /// session corruption when multiple messages arrive concurrently (e.g. rapid voice
     /// messages via Telegram). Different agents can still run in parallel.
     agent_msg_locks: dashmap::DashMap<AgentId, Arc<tokio::sync::Mutex<()>>>,
     /// Weak self-reference for trigger dispatch (set after Arc wrapping).
-    self_handle: OnceLock<Weak<OpenFangKernel>>,
+    self_handle: OnceLock<Weak<TaptheAiKernel>>,
 }
 
 /// Bounded in-memory delivery receipt tracker.
 /// Stores up to `MAX_RECEIPTS` most recent delivery receipts per agent.
 pub struct DeliveryTracker {
-    receipts: dashmap::DashMap<AgentId, Vec<openfang_channels::types::DeliveryReceipt>>,
+    receipts: dashmap::DashMap<AgentId, Vec<tapthe_ai_channels::types::DeliveryReceipt>>,
 }
 
 impl Default for DeliveryTracker {
@@ -187,7 +187,7 @@ impl DeliveryTracker {
     }
 
     /// Record a delivery receipt for an agent.
-    pub fn record(&self, agent_id: AgentId, receipt: openfang_channels::types::DeliveryReceipt) {
+    pub fn record(&self, agent_id: AgentId, receipt: tapthe_ai_channels::types::DeliveryReceipt) {
         let mut entry = self.receipts.entry(agent_id).or_default();
         entry.push(receipt);
         // Per-agent cap
@@ -213,7 +213,7 @@ impl DeliveryTracker {
         &self,
         agent_id: AgentId,
         limit: usize,
-    ) -> Vec<openfang_channels::types::DeliveryReceipt> {
+    ) -> Vec<tapthe_ai_channels::types::DeliveryReceipt> {
         self.receipts
             .get(&agent_id)
             .map(|entries| entries.iter().rev().take(limit).cloned().collect())
@@ -224,12 +224,12 @@ impl DeliveryTracker {
     pub fn sent_receipt(
         channel: &str,
         recipient: &str,
-    ) -> openfang_channels::types::DeliveryReceipt {
-        openfang_channels::types::DeliveryReceipt {
+    ) -> tapthe_ai_channels::types::DeliveryReceipt {
+        tapthe_ai_channels::types::DeliveryReceipt {
             message_id: uuid::Uuid::new_v4().to_string(),
             channel: channel.to_string(),
             recipient: Self::sanitize_recipient(recipient),
-            status: openfang_channels::types::DeliveryStatus::Sent,
+            status: tapthe_ai_channels::types::DeliveryStatus::Sent,
             timestamp: chrono::Utc::now(),
             error: None,
         }
@@ -240,12 +240,12 @@ impl DeliveryTracker {
         channel: &str,
         recipient: &str,
         error: &str,
-    ) -> openfang_channels::types::DeliveryReceipt {
-        openfang_channels::types::DeliveryReceipt {
+    ) -> tapthe_ai_channels::types::DeliveryReceipt {
+        tapthe_ai_channels::types::DeliveryReceipt {
             message_id: uuid::Uuid::new_v4().to_string(),
             channel: channel.to_string(),
             recipient: Self::sanitize_recipient(recipient),
-            status: openfang_channels::types::DeliveryStatus::Failed,
+            status: tapthe_ai_channels::types::DeliveryStatus::Failed,
             timestamp: chrono::Utc::now(),
             // Sanitize error: no credentials, max 256 chars
             error: Some(
@@ -273,7 +273,7 @@ impl DeliveryTracker {
 fn ensure_workspace(workspace: &Path) -> KernelResult<()> {
     for subdir in &["data", "output", "sessions", "skills", "logs", "memory"] {
         std::fs::create_dir_all(workspace.join(subdir)).map_err(|e| {
-            KernelError::OpenFang(OpenFangError::Internal(format!(
+            KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                 "Failed to create workspace dir {}/{subdir}: {e}",
                 workspace.display()
             )))
@@ -444,7 +444,7 @@ fn append_daily_memory_log(workspace: &Path, response: &str) {
         }
     }
     // Truncate long responses for the log (UTF-8 safe)
-    let summary = openfang_types::truncate_str(trimmed, 500);
+    let summary = tapthe_ai_types::truncate_str(trimmed, 500);
     let timestamp = chrono::Utc::now().format("%H:%M:%S").to_string();
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
@@ -476,7 +476,7 @@ fn read_identity_file(workspace: &Path, filename: &str) -> Option<String> {
         return None;
     }
     if content.len() > MAX_IDENTITY_FILE_BYTES {
-        Some(openfang_types::truncate_str(&content, MAX_IDENTITY_FILE_BYTES).to_string())
+        Some(tapthe_ai_types::truncate_str(&content, MAX_IDENTITY_FILE_BYTES).to_string())
     } else {
         Some(content)
     }
@@ -502,7 +502,7 @@ fn gethostname() -> Option<String> {
     }
 }
 
-impl OpenFangKernel {
+impl TaptheAiKernel {
     /// Boot the kernel with configuration from the given path.
     pub fn boot(config_path: Option<&Path>) -> KernelResult<Self> {
         let config = load_config(config_path);
@@ -511,20 +511,20 @@ impl OpenFangKernel {
 
     /// Boot the kernel with an explicit configuration.
     pub fn boot_with_config(mut config: KernelConfig) -> KernelResult<Self> {
-        use openfang_types::config::KernelMode;
+        use tapthe_ai_types::config::KernelMode;
 
         // Env var overrides — useful for Docker where config.toml is baked in.
-        if let Ok(listen) = std::env::var("OPENFANG_LISTEN") {
+        if let Ok(listen) = std::env::var("TAPTHE_AI_LISTEN") {
             config.api_listen = listen;
         }
 
-        // OPENFANG_API_KEY: env var sets the API authentication key when
+        // TAPTHE_AI_API_KEY: env var sets the API authentication key when
         // config.toml doesn't already have one.  Config file takes precedence.
         if config.api_key.trim().is_empty() {
-            if let Ok(key) = std::env::var("OPENFANG_API_KEY") {
+            if let Ok(key) = std::env::var("TAPTHE_AI_API_KEY") {
                 let key = key.trim().to_string();
                 if !key.is_empty() {
-                    info!("Using API key from OPENFANG_API_KEY environment variable");
+                    info!("Using API key from TAPTHE_AI_API_KEY environment variable");
                     config.api_key = key;
                 }
             }
@@ -535,13 +535,13 @@ impl OpenFangKernel {
 
         match config.mode {
             KernelMode::Stable => {
-                info!("Booting OpenFang kernel in STABLE mode — conservative defaults enforced");
+                info!("Booting Tapthe.ai kernel in STABLE mode — conservative defaults enforced");
             }
             KernelMode::Dev => {
-                warn!("Booting OpenFang kernel in DEV mode — experimental features enabled");
+                warn!("Booting Tapthe.ai kernel in DEV mode — experimental features enabled");
             }
             KernelMode::Default => {
-                info!("Booting OpenFang kernel...");
+                info!("Booting Tapthe.ai kernel...");
             }
         }
 
@@ -560,7 +560,7 @@ impl OpenFangKernel {
             .memory
             .sqlite_path
             .clone()
-            .unwrap_or_else(|| config.data_dir.join("openfang.db"));
+            .unwrap_or_else(|| config.data_dir.join("tapthe-ai.db"));
         let memory = Arc::new(
             MemorySubstrate::open(&db_path, config.memory.decay_rate, &config.memory)
                 .map_err(|e| KernelError::BootFailed(format!("Memory init failed: {e}")))?,
@@ -570,7 +570,7 @@ impl OpenFangKernel {
         let credential_resolver = {
             let vault_path = config.home_dir.join("vault.enc");
             let vault = if vault_path.exists() {
-                let mut v = openfang_extensions::vault::CredentialVault::new(vault_path);
+                let mut v = tapthe_ai_extensions::vault::CredentialVault::new(vault_path);
                 match v.unlock() {
                     Ok(()) => {
                         info!("Credential vault unlocked ({} entries)", v.len());
@@ -585,7 +585,7 @@ impl OpenFangKernel {
                 None
             };
             let dotenv_path = config.home_dir.join(".env");
-            openfang_extensions::credentials::CredentialResolver::new(vault, Some(&dotenv_path))
+            tapthe_ai_extensions::credentials::CredentialResolver::new(vault, Some(&dotenv_path))
         };
 
         // Create LLM driver.
@@ -705,7 +705,7 @@ impl OpenFangKernel {
 
         // Use the chain, or create a stub driver if everything failed
         let driver: Arc<dyn LlmDriver> = if driver_chain.len() > 1 {
-            Arc::new(openfang_runtime::drivers::fallback::FallbackDriver::with_models(model_chain))
+            Arc::new(tapthe_ai_runtime::drivers::fallback::FallbackDriver::with_models(model_chain))
         } else if let Some(single) = driver_chain.into_iter().next() {
             single
         } else {
@@ -717,7 +717,7 @@ impl OpenFangKernel {
 
         // Initialize metering engine (shares the same SQLite connection as the memory substrate)
         let metering = Arc::new(MeteringEngine::new(Arc::new(
-            openfang_memory::usage::UsageStore::new(memory.usage_conn()),
+            tapthe_ai_memory::usage::UsageStore::new(memory.usage_conn()),
         )));
 
         let supervisor = Supervisor::new();
@@ -734,7 +734,7 @@ impl OpenFangKernel {
         }
 
         // Initialize model catalog, detect provider auth, and apply URL overrides
-        let mut model_catalog = openfang_runtime::model_catalog::ModelCatalog::new();
+        let mut model_catalog = tapthe_ai_runtime::model_catalog::ModelCatalog::new();
         model_catalog.detect_auth();
         if !config.provider_urls.is_empty() {
             model_catalog.apply_url_overrides(&config.provider_urls);
@@ -743,7 +743,7 @@ impl OpenFangKernel {
                 config.provider_urls.len()
             );
         }
-        // Load user's custom models from ~/.openfang/custom_models.json
+        // Load user's custom models from ~/.tapthe-ai/custom_models.json
         let custom_models_path = config.home_dir.join("custom_models.json");
         model_catalog.load_custom_models(&custom_models_path);
         let available_count = model_catalog.available_models().len();
@@ -759,7 +759,7 @@ impl OpenFangKernel {
 
         // Initialize skill registry
         let skills_dir = config.home_dir.join("skills");
-        let mut skill_registry = openfang_skills::registry::SkillRegistry::new(skills_dir);
+        let mut skill_registry = tapthe_ai_skills::registry::SkillRegistry::new(skills_dir);
 
         // Load bundled skills first (compile-time embedded)
         let bundled_count = skill_registry.load_bundled();
@@ -784,7 +784,7 @@ impl OpenFangKernel {
         }
 
         // Initialize hand registry (curated autonomous packages)
-        let hand_registry = openfang_hands::registry::HandRegistry::new();
+        let hand_registry = tapthe_ai_hands::registry::HandRegistry::new();
         let hand_count = hand_registry.load_bundled();
         if hand_count > 0 {
             info!("Loaded {hand_count} bundled hand(s)");
@@ -792,7 +792,7 @@ impl OpenFangKernel {
 
         // Initialize extension/integration registry
         let mut extension_registry =
-            openfang_extensions::registry::IntegrationRegistry::new(&config.home_dir);
+            tapthe_ai_extensions::registry::IntegrationRegistry::new(&config.home_dir);
         let ext_bundled = extension_registry.load_bundled();
         match extension_registry.load_installed() {
             Ok(count) => {
@@ -820,13 +820,13 @@ impl OpenFangKernel {
         }
 
         // Initialize integration health monitor
-        let health_config = openfang_extensions::health::HealthMonitorConfig {
+        let health_config = tapthe_ai_extensions::health::HealthMonitorConfig {
             auto_reconnect: config.extensions.auto_reconnect,
             max_reconnect_attempts: config.extensions.reconnect_max_attempts,
             max_backoff_secs: config.extensions.reconnect_max_backoff_secs,
             check_interval_secs: config.extensions.health_check_interval_secs,
         };
-        let extension_health = openfang_extensions::health::HealthMonitor::new(health_config);
+        let extension_health = tapthe_ai_extensions::health::HealthMonitor::new(health_config);
         // Register all installed integrations for health monitoring
         for inst in extension_registry.to_mcp_configs() {
             extension_health.register(&inst.name);
@@ -834,13 +834,13 @@ impl OpenFangKernel {
 
         // Initialize web tools (multi-provider search + SSRF-protected fetch + caching)
         let cache_ttl = std::time::Duration::from_secs(config.web.cache_ttl_minutes * 60);
-        let web_cache = Arc::new(openfang_runtime::web_cache::WebCache::new(cache_ttl));
-        let web_ctx = openfang_runtime::web_search::WebToolsContext {
-            search: openfang_runtime::web_search::WebSearchEngine::new(
+        let web_cache = Arc::new(tapthe_ai_runtime::web_cache::WebCache::new(cache_ttl));
+        let web_ctx = tapthe_ai_runtime::web_search::WebToolsContext {
+            search: tapthe_ai_runtime::web_search::WebSearchEngine::new(
                 config.web.clone(),
                 web_cache.clone(),
             ),
-            fetch: openfang_runtime::web_fetch::WebFetchEngine::new(
+            fetch: tapthe_ai_runtime::web_fetch::WebFetchEngine::new(
                 config.web.fetch.clone(),
                 web_cache,
             ),
@@ -848,9 +848,9 @@ impl OpenFangKernel {
 
         // Auto-detect embedding driver for vector similarity search
         let embedding_driver: Option<
-            Arc<dyn openfang_runtime::embedding::EmbeddingDriver + Send + Sync>,
+            Arc<dyn tapthe_ai_runtime::embedding::EmbeddingDriver + Send + Sync>,
         > = {
-            use openfang_runtime::embedding::create_embedding_driver;
+            use tapthe_ai_runtime::embedding::create_embedding_driver;
             let configured_model = &config.memory.embedding_model;
             if let Some(ref provider) = config.memory.embedding_provider {
                 // Explicit config takes priority — use the configured embedding model.
@@ -915,12 +915,12 @@ impl OpenFangKernel {
             }
         };
 
-        let browser_ctx = openfang_runtime::browser::BrowserManager::new(config.browser.clone());
+        let browser_ctx = tapthe_ai_runtime::browser::BrowserManager::new(config.browser.clone());
 
         // Initialize media understanding engine
         let media_engine =
-            openfang_runtime::media_understanding::MediaEngine::new(config.media.clone());
-        let tts_engine = openfang_runtime::tts::TtsEngine::new(config.tts.clone());
+            tapthe_ai_runtime::media_understanding::MediaEngine::new(config.media.clone());
+        let tts_engine = tapthe_ai_runtime::tts::TtsEngine::new(config.tts.clone());
         let mut pairing = crate::pairing::PairingManager::new(config.pairing.clone());
 
         // Load paired devices from database and set up persistence callback
@@ -1020,7 +1020,7 @@ impl OpenFangKernel {
             running_tasks: dashmap::DashMap::new(),
             mcp_connections: tokio::sync::Mutex::new(Vec::new()),
             mcp_tools: std::sync::Mutex::new(Vec::new()),
-            a2a_task_store: openfang_runtime::a2a::A2aTaskStore::default(),
+            a2a_task_store: tapthe_ai_runtime::a2a::A2aTaskStore::default(),
             a2a_external_agents: std::sync::Mutex::new(Vec::new()),
             web_ctx,
             browser_ctx,
@@ -1039,8 +1039,8 @@ impl OpenFangKernel {
             bindings: std::sync::Mutex::new(initial_bindings),
             broadcast: initial_broadcast,
             auto_reply_engine,
-            hooks: openfang_runtime::hooks::HookRegistry::new(),
-            process_manager: Arc::new(openfang_runtime::process_manager::ProcessManager::new(5)),
+            hooks: tapthe_ai_runtime::hooks::HookRegistry::new(),
+            process_manager: Arc::new(tapthe_ai_runtime::process_manager::ProcessManager::new(5)),
             peer_registry: OnceLock::new(),
             peer_node: OnceLock::new(),
             booted_at: std::time::Instant::now(),
@@ -1070,7 +1070,7 @@ impl OpenFangKernel {
                     if toml_path.exists() {
                         match std::fs::read_to_string(&toml_path) {
                             Ok(toml_str) => {
-                                match toml::from_str::<openfang_types::agent::AgentManifest>(
+                                match toml::from_str::<tapthe_ai_types::agent::AgentManifest>(
                                     &toml_str,
                                 ) {
                                     Ok(disk_manifest) => {
@@ -1209,7 +1209,7 @@ impl OpenFangKernel {
             let manifest = AgentManifest {
                 name: "assistant".to_string(),
                 description: "General-purpose assistant".to_string(),
-                model: openfang_types::agent::ModelConfig {
+                model: tapthe_ai_types::agent::ModelConfig {
                     provider: dm.provider.clone(),
                     model: dm.model.clone(),
                     system_prompt: "You are a helpful AI assistant.".to_string(),
@@ -1244,7 +1244,7 @@ impl OpenFangKernel {
             }
         }
 
-        info!("OpenFang kernel booted successfully");
+        info!("Tapthe.ai kernel booted successfully");
         Ok(kernel)
     }
 
@@ -1271,7 +1271,7 @@ impl OpenFangKernel {
         let session = self
             .memory
             .create_session(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
         let session_id = session.id;
 
         // Inherit kernel exec_policy as fallback if agent manifest doesn't have one
@@ -1387,7 +1387,7 @@ impl OpenFangKernel {
         };
         self.registry
             .register(entry.clone())
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Update parent's children list
         if let Some(parent_id) = parent {
@@ -1397,14 +1397,14 @@ impl OpenFangKernel {
         // Persist agent to SQLite so it survives restarts
         self.memory
             .save_agent(&entry)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         info!(agent = %name, id = %agent_id, "Agent spawned");
 
         // SECURITY: Record agent spawn in audit trail
         self.audit_log.record(
             agent_id.to_string(),
-            openfang_runtime::audit::AuditAction::AgentSpawn,
+            tapthe_ai_runtime::audit::AuditAction::AgentSpawn,
             format!("name={name}, parent={parent:?}"),
             "ok",
         );
@@ -1442,14 +1442,14 @@ impl OpenFangKernel {
     /// Call this before `spawn_agent` when a `SignedManifest` JSON is provided
     /// alongside the TOML. Returns the verified manifest TOML string on success.
     pub fn verify_signed_manifest(&self, signed_json: &str) -> KernelResult<String> {
-        let signed: openfang_types::manifest_signing::SignedManifest =
+        let signed: tapthe_ai_types::manifest_signing::SignedManifest =
             serde_json::from_str(signed_json).map_err(|e| {
-                KernelError::OpenFang(openfang_types::error::OpenFangError::Config(format!(
+                KernelError::Tapthe.ai(tapthe_ai_types::error::TaptheAiError::Config(format!(
                     "Invalid signed manifest JSON: {e}"
                 )))
             })?;
         signed.verify().map_err(|e| {
-            KernelError::OpenFang(openfang_types::error::OpenFangError::Config(format!(
+            KernelError::Tapthe.ai(tapthe_ai_types::error::TaptheAiError::Config(format!(
                 "Manifest signature verification failed: {e}"
             )))
         })?;
@@ -1484,7 +1484,7 @@ impl OpenFangKernel {
         &self,
         agent_id: AgentId,
         message: &str,
-        blocks: Vec<openfang_types::message::ContentBlock>,
+        blocks: Vec<tapthe_ai_types::message::ContentBlock>,
     ) -> KernelResult<AgentLoopResult> {
         let handle: Option<Arc<dyn KernelHandle>> = self
             .self_handle
@@ -1536,7 +1536,7 @@ impl OpenFangKernel {
         agent_id: AgentId,
         message: &str,
         kernel_handle: Option<Arc<dyn KernelHandle>>,
-        content_blocks: Option<Vec<openfang_types::message::ContentBlock>>,
+        content_blocks: Option<Vec<tapthe_ai_types::message::ContentBlock>>,
         sender_id: Option<String>,
         sender_name: Option<String>,
     ) -> KernelResult<AgentLoopResult> {
@@ -1554,10 +1554,10 @@ impl OpenFangKernel {
         // Enforce quota before running the agent loop
         self.scheduler
             .check_quota(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         // Dispatch based on module type
@@ -1591,7 +1591,7 @@ impl OpenFangKernel {
                 // SECURITY: Record successful message in audit trail
                 self.audit_log.record(
                     agent_id.to_string(),
-                    openfang_runtime::audit::AuditAction::AgentMessage,
+                    tapthe_ai_runtime::audit::AuditAction::AgentMessage,
                     format!(
                         "tokens_in={}, tokens_out={}",
                         result.total_usage.input_tokens, result.total_usage.output_tokens
@@ -1605,7 +1605,7 @@ impl OpenFangKernel {
                 // SECURITY: Record failed message in audit trail
                 self.audit_log.record(
                     agent_id.to_string(),
-                    openfang_runtime::audit::AuditAction::AgentMessage,
+                    tapthe_ai_runtime::audit::AuditAction::AgentMessage,
                     "agent loop failed",
                     format!("error: {e}"),
                 );
@@ -1633,7 +1633,7 @@ impl OpenFangKernel {
         kernel_handle: Option<Arc<dyn KernelHandle>>,
         sender_id: Option<String>,
         sender_name: Option<String>,
-        content_blocks: Option<Vec<openfang_types::message::ContentBlock>>,
+        content_blocks: Option<Vec<tapthe_ai_types::message::ContentBlock>>,
     ) -> KernelResult<(
         tokio::sync::mpsc::Receiver<StreamEvent>,
         tokio::task::JoinHandle<KernelResult<AgentLoopResult>>,
@@ -1641,10 +1641,10 @@ impl OpenFangKernel {
         // Enforce quota before spawning the streaming task
         self.scheduler
             .check_quota(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let is_wasm = entry.manifest.module.starts_with("wasm:");
@@ -1678,7 +1678,7 @@ impl OpenFangKernel {
                             .await;
                         let _ = tx
                             .send(StreamEvent::ContentComplete {
-                                stop_reason: openfang_types::message::StopReason::EndTurn,
+                                stop_reason: tapthe_ai_types::message::StopReason::EndTurn,
                                 usage: result.total_usage,
                             })
                             .await;
@@ -1705,8 +1705,8 @@ impl OpenFangKernel {
         let mut session = self
             .memory
             .get_session(entry.session_id)
-            .map_err(KernelError::OpenFang)?
-            .unwrap_or_else(|| openfang_memory::session::Session {
+            .map_err(KernelError::Tapthe.ai)?
+            .unwrap_or_else(|| tapthe_ai_memory::session::Session {
                 id: entry.session_id,
                 agent_id,
                 messages: Vec::new(),
@@ -1716,7 +1716,7 @@ impl OpenFangKernel {
 
         // Check if auto-compaction is needed: message-count OR token-count OR quota-headroom trigger
         let needs_compact = {
-            use openfang_runtime::compactor::{
+            use tapthe_ai_runtime::compactor::{
                 estimate_token_count, needs_compaction as check_compact,
                 needs_compaction_by_tokens, CompactionConfig,
             };
@@ -1780,7 +1780,7 @@ impl OpenFangKernel {
         }
 
         // Build workspace-aware skill snapshot BEFORE tool list and prompt building.
-        // Loading order: bundled → global (~/.openfang/skills) → workspace skills.
+        // Loading order: bundled → global (~/.tapthe-ai/skills) → workspace skills.
         // Each layer overrides duplicates from the previous layer. (#851, #808)
         let skill_snapshot = {
             let mut snapshot = self
@@ -1828,7 +1828,7 @@ impl OpenFangKernel {
                 })
                 .collect();
 
-            let prompt_ctx = openfang_runtime::prompt_builder::PromptContext {
+            let prompt_ctx = tapthe_ai_runtime::prompt_builder::PromptContext {
                 agent_name: manifest.name.clone(),
                 agent_description: manifest.description.clone(),
                 base_system_prompt: manifest.model.system_prompt.clone(),
@@ -1880,7 +1880,7 @@ impl OpenFangKernel {
                     .and_then(|w| read_identity_file(w, "BOOTSTRAP.md")),
                 workspace_context: manifest.workspace.as_ref().map(|w| {
                     let mut ws_ctx =
-                        openfang_runtime::workspace_context::WorkspaceContext::detect(w);
+                        tapthe_ai_runtime::workspace_context::WorkspaceContext::detect(w);
                     ws_ctx.build_context_section()
                 }),
                 identity_md: manifest
@@ -1905,11 +1905,11 @@ impl OpenFangKernel {
                 sender_name,
             };
             manifest.model.system_prompt =
-                openfang_runtime::prompt_builder::build_system_prompt(&prompt_ctx);
+                tapthe_ai_runtime::prompt_builder::build_system_prompt(&prompt_ctx);
             // Store canonical context separately for injection as user message
             // (keeps system prompt stable across turns for provider prompt caching)
             if let Some(cc_msg) =
-                openfang_runtime::prompt_builder::build_canonical_context_message(&prompt_ctx)
+                tapthe_ai_runtime::prompt_builder::build_canonical_context_message(&prompt_ctx)
             {
                 manifest.metadata.insert(
                     "canonical_context_msg".to_string(),
@@ -1921,7 +1921,7 @@ impl OpenFangKernel {
         let memory = Arc::clone(&self.memory);
         // Build link context from user message (auto-extract URLs for the agent)
         let message_owned = if let Some(link_ctx) =
-            openfang_runtime::link_understanding::build_link_context(message, &self.config.links)
+            tapthe_ai_runtime::link_understanding::build_link_context(message, &self.config.links)
         {
             format!("{message}{link_ctx}")
         } else {
@@ -1953,9 +1953,9 @@ impl OpenFangKernel {
 
             // Create a phase callback that emits PhaseChange events to WS/SSE clients
             let phase_tx = tx.clone();
-            let phase_cb: openfang_runtime::agent_loop::PhaseCallback =
+            let phase_cb: tapthe_ai_runtime::agent_loop::PhaseCallback =
                 std::sync::Arc::new(move |phase| {
-                    use openfang_runtime::agent_loop::LoopPhase;
+                    use tapthe_ai_runtime::agent_loop::LoopPhase;
                     let (phase_str, detail) = match &phase {
                         LoopPhase::Thinking => ("thinking".to_string(), None),
                         LoopPhase::ToolUse { tool_name } => {
@@ -2054,7 +2054,7 @@ impl OpenFangKernel {
                     );
                     let _ = kernel_clone
                         .metering
-                        .record(&openfang_memory::usage::UsageRecord {
+                        .record(&tapthe_ai_memory::usage::UsageRecord {
                             agent_id,
                             model: model.clone(),
                             input_tokens: result.total_usage.input_tokens,
@@ -2070,7 +2070,7 @@ impl OpenFangKernel {
                     // Post-loop compaction check: if session now exceeds token threshold,
                     // trigger compaction in background for the next call.
                     {
-                        use openfang_runtime::compactor::{
+                        use tapthe_ai_runtime::compactor::{
                             estimate_token_count, needs_compaction_by_tokens, CompactionConfig,
                         };
                         let config = CompactionConfig::default();
@@ -2091,7 +2091,7 @@ impl OpenFangKernel {
                 Err(e) => {
                     kernel_clone.supervisor.record_panic();
                     warn!(agent_id = %agent_id, error = %e, "Streaming agent loop failed");
-                    Err(KernelError::OpenFang(e))
+                    Err(KernelError::Tapthe.ai(e))
                 }
             }
         });
@@ -2122,7 +2122,7 @@ impl OpenFangKernel {
         info!(agent = %entry.name, path = %wasm_path.display(), "Executing WASM agent");
 
         let wasm_bytes = std::fs::read(&wasm_path).map_err(|e| {
-            KernelError::OpenFang(OpenFangError::Internal(format!(
+            KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                 "Failed to read WASM module '{}': {e}",
                 wasm_path.display()
             )))
@@ -2154,7 +2154,7 @@ impl OpenFangKernel {
             )
             .await
             .map_err(|e| {
-                KernelError::OpenFang(OpenFangError::Internal(format!(
+                KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                     "WASM execution failed: {e}"
                 )))
             })?;
@@ -2177,7 +2177,7 @@ impl OpenFangKernel {
 
         Ok(AgentLoopResult {
             response,
-            total_usage: openfang_types::message::TokenUsage {
+            total_usage: tapthe_ai_types::message::TokenUsage {
                 input_tokens: 0,
                 output_tokens: 0,
             },
@@ -2228,7 +2228,7 @@ impl OpenFangKernel {
         )
         .await
         .map_err(|e| {
-            KernelError::OpenFang(OpenFangError::Internal(format!(
+            KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                 "Python execution failed: {e}"
             )))
         })?;
@@ -2237,7 +2237,7 @@ impl OpenFangKernel {
 
         Ok(AgentLoopResult {
             response: result.response,
-            total_usage: openfang_types::message::TokenUsage {
+            total_usage: tapthe_ai_types::message::TokenUsage {
                 input_tokens: 0,
                 output_tokens: 0,
             },
@@ -2256,20 +2256,20 @@ impl OpenFangKernel {
         agent_id: AgentId,
         message: &str,
         kernel_handle: Option<Arc<dyn KernelHandle>>,
-        content_blocks: Option<Vec<openfang_types::message::ContentBlock>>,
+        content_blocks: Option<Vec<tapthe_ai_types::message::ContentBlock>>,
         sender_id: Option<String>,
         sender_name: Option<String>,
     ) -> KernelResult<AgentLoopResult> {
         // Check metering quota before starting
         self.metering
             .check_quota(agent_id, &entry.manifest.resources)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         let mut session = self
             .memory
             .get_session(entry.session_id)
-            .map_err(KernelError::OpenFang)?
-            .unwrap_or_else(|| openfang_memory::session::Session {
+            .map_err(KernelError::Tapthe.ai)?
+            .unwrap_or_else(|| tapthe_ai_memory::session::Session {
                 id: entry.session_id,
                 agent_id,
                 messages: Vec::new(),
@@ -2279,7 +2279,7 @@ impl OpenFangKernel {
 
         // Pre-emptive compaction: compact before LLM call if session is large or quota headroom is low
         {
-            use openfang_runtime::compactor::{
+            use tapthe_ai_runtime::compactor::{
                 estimate_token_count, needs_compaction as check_compact,
                 needs_compaction_by_tokens, CompactionConfig,
             };
@@ -2333,7 +2333,7 @@ impl OpenFangKernel {
         }
 
         // Build workspace-aware skill snapshot BEFORE tool list and prompt building.
-        // Loading order: bundled → global (~/.openfang/skills) → workspace skills.
+        // Loading order: bundled → global (~/.tapthe-ai/skills) → workspace skills.
         // Each layer overrides duplicates from the previous layer. (#851, #808)
         let skill_snapshot = {
             let mut snapshot = self
@@ -2389,7 +2389,7 @@ impl OpenFangKernel {
                 })
                 .collect();
 
-            let prompt_ctx = openfang_runtime::prompt_builder::PromptContext {
+            let prompt_ctx = tapthe_ai_runtime::prompt_builder::PromptContext {
                 agent_name: manifest.name.clone(),
                 agent_description: manifest.description.clone(),
                 base_system_prompt: manifest.model.system_prompt.clone(),
@@ -2441,7 +2441,7 @@ impl OpenFangKernel {
                     .and_then(|w| read_identity_file(w, "BOOTSTRAP.md")),
                 workspace_context: manifest.workspace.as_ref().map(|w| {
                     let mut ws_ctx =
-                        openfang_runtime::workspace_context::WorkspaceContext::detect(w);
+                        tapthe_ai_runtime::workspace_context::WorkspaceContext::detect(w);
                     ws_ctx.build_context_section()
                 }),
                 identity_md: manifest
@@ -2466,11 +2466,11 @@ impl OpenFangKernel {
                 sender_name,
             };
             manifest.model.system_prompt =
-                openfang_runtime::prompt_builder::build_system_prompt(&prompt_ctx);
+                tapthe_ai_runtime::prompt_builder::build_system_prompt(&prompt_ctx);
             // Store canonical context separately for injection as user message
             // (keeps system prompt stable across turns for provider prompt caching)
             if let Some(cc_msg) =
-                openfang_runtime::prompt_builder::build_canonical_context_message(&prompt_ctx)
+                tapthe_ai_runtime::prompt_builder::build_canonical_context_message(&prompt_ctx)
             {
                 manifest.metadata.insert(
                     "canonical_context_msg".to_string(),
@@ -2479,7 +2479,7 @@ impl OpenFangKernel {
             }
         }
 
-        let is_stable = self.config.mode == openfang_types::config::KernelMode::Stable;
+        let is_stable = self.config.mode == tapthe_ai_types::config::KernelMode::Stable;
 
         if is_stable {
             // In Stable mode: use pinned_model if set, otherwise default model
@@ -2498,7 +2498,7 @@ impl OpenFangKernel {
             // Build a probe request to score complexity
             let probe = CompletionRequest {
                 model: strip_provider_prefix(&manifest.model.model, &manifest.model.provider),
-                messages: vec![openfang_types::message::Message::user(message)],
+                messages: vec![tapthe_ai_types::message::Message::user(message)],
                 tools: tools.clone(),
                 max_tokens: manifest.model.max_tokens,
                 temperature: manifest.model.temperature,
@@ -2537,7 +2537,7 @@ impl OpenFangKernel {
 
         // Build link context from user message (auto-extract URLs for the agent)
         let message_with_links = if let Some(link_ctx) =
-            openfang_runtime::link_understanding::build_link_context(message, &self.config.links)
+            tapthe_ai_runtime::link_understanding::build_link_context(message, &self.config.links)
         {
             format!("{message}{link_ctx}")
         } else {
@@ -2576,7 +2576,7 @@ impl OpenFangKernel {
             content_blocks,
         )
         .await
-        .map_err(KernelError::OpenFang)?;
+        .map_err(KernelError::Tapthe.ai)?;
 
         // Append new messages to canonical session for cross-channel memory
         if session.messages.len() > messages_before {
@@ -2606,7 +2606,7 @@ impl OpenFangKernel {
             result.total_usage.input_tokens,
             result.total_usage.output_tokens,
         );
-        let _ = self.metering.record(&openfang_memory::usage::UsageRecord {
+        let _ = self.metering.record(&tapthe_ai_memory::usage::UsageRecord {
             agent_id,
             model: model.clone(),
             input_tokens: result.total_usage.input_tokens,
@@ -2618,14 +2618,14 @@ impl OpenFangKernel {
         // Populate cost on the result based on usage_footer mode
         let mut result = result;
         match self.config.usage_footer {
-            openfang_types::config::UsageFooterMode::Off => {
+            tapthe_ai_types::config::UsageFooterMode::Off => {
                 result.cost_usd = None;
             }
-            openfang_types::config::UsageFooterMode::Cost
-            | openfang_types::config::UsageFooterMode::Full => {
+            tapthe_ai_types::config::UsageFooterMode::Cost
+            | tapthe_ai_types::config::UsageFooterMode::Full => {
                 result.cost_usd = if cost > 0.0 { Some(cost) } else { None };
             }
-            openfang_types::config::UsageFooterMode::Tokens => {
+            tapthe_ai_types::config::UsageFooterMode::Tokens => {
                 // Tokens are already in result.total_usage, omit cost
                 result.cost_usd = None;
             }
@@ -2651,7 +2651,7 @@ impl OpenFangKernel {
     /// and creates a fresh session ID.
     pub fn reset_session(&self, agent_id: AgentId) -> KernelResult<()> {
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         // Auto-save session context to workspace memory before clearing
@@ -2668,12 +2668,12 @@ impl OpenFangKernel {
         let new_session = self
             .memory
             .create_session(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Update registry with new session ID
         self.registry
             .update_session_id(agent_id, new_session.id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Reset quota tracking so /new clears "token quota exceeded"
         self.scheduler.reset_usage(agent_id);
@@ -2687,7 +2687,7 @@ impl OpenFangKernel {
     /// Creates a fresh empty session afterward so the agent is still usable.
     pub fn clear_agent_history(&self, agent_id: AgentId) -> KernelResult<()> {
         let _entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         // Delete all regular sessions
@@ -2700,12 +2700,12 @@ impl OpenFangKernel {
         let new_session = self
             .memory
             .create_session(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Update registry with new session ID
         self.registry
             .update_session_id(agent_id, new_session.id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         info!(agent_id = %agent_id, "All agent history cleared");
         Ok(())
@@ -2715,13 +2715,13 @@ impl OpenFangKernel {
     pub fn list_agent_sessions(&self, agent_id: AgentId) -> KernelResult<Vec<serde_json::Value>> {
         // Verify agent exists
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let mut sessions = self
             .memory
             .list_agent_sessions(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Mark the active session
         for s in &mut sessions {
@@ -2746,18 +2746,18 @@ impl OpenFangKernel {
     ) -> KernelResult<serde_json::Value> {
         // Verify agent exists
         let _entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let session = self
             .memory
             .create_session_with_label(agent_id, label)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Switch to the new session
         self.registry
             .update_session_id(agent_id, session.id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         info!(agent_id = %agent_id, label = ?label, "Created new session");
 
@@ -2775,27 +2775,27 @@ impl OpenFangKernel {
     ) -> KernelResult<()> {
         // Verify agent exists
         let _entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         // Verify session exists and belongs to this agent
         let session = self
             .memory
             .get_session(session_id)
-            .map_err(KernelError::OpenFang)?
+            .map_err(KernelError::Tapthe.ai)?
             .ok_or_else(|| {
-                KernelError::OpenFang(OpenFangError::Internal("Session not found".to_string()))
+                KernelError::Tapthe.ai(TaptheAiError::Internal("Session not found".to_string()))
             })?;
 
         if session.agent_id != agent_id {
-            return Err(KernelError::OpenFang(OpenFangError::Internal(
+            return Err(KernelError::Tapthe.ai(TaptheAiError::Internal(
                 "Session belongs to a different agent".to_string(),
             )));
         }
 
         self.registry
             .update_session_id(agent_id, session_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         info!(agent_id = %agent_id, session_id = %session_id.0, "Switched session");
         Ok(())
@@ -2806,9 +2806,9 @@ impl OpenFangKernel {
         &self,
         agent_id: AgentId,
         entry: &AgentEntry,
-        session: &openfang_memory::session::Session,
+        session: &tapthe_ai_memory::session::Session,
     ) {
-        use openfang_types::message::{MessageContent, Role};
+        use tapthe_ai_types::message::{MessageContent, Role};
 
         // Take last 10 messages (or all if fewer)
         let recent = &session.messages[session.messages.len().saturating_sub(10)..];
@@ -2847,7 +2847,7 @@ impl OpenFangKernel {
                 .take(5)
                 .enumerate()
                 .map(|(i, t)| {
-                    let truncated = openfang_types::truncate_str(t, 200);
+                    let truncated = tapthe_ai_types::truncate_str(t, 200);
                     format!("{}. {}", i + 1, truncated)
                 })
                 .collect::<Vec<_>>()
@@ -2950,12 +2950,12 @@ impl OpenFangKernel {
                     api_key_env,
                     None,
                 )
-                .map_err(KernelError::OpenFang)?;
+                .map_err(KernelError::Tapthe.ai)?;
             info!(agent_id = %agent_id, model = %normalized_model, provider = %provider, "Agent model+provider updated");
         } else {
             self.registry
                 .update_model(agent_id, normalized_model.clone())
-                .map_err(KernelError::OpenFang)?;
+                .map_err(KernelError::Tapthe.ai)?;
             info!(agent_id = %agent_id, model = %normalized_model, "Agent model updated (provider unchanged)");
         }
 
@@ -2982,7 +2982,7 @@ impl OpenFangKernel {
             let known = registry.skill_names();
             for name in &skills {
                 if !known.contains(name) {
-                    return Err(KernelError::OpenFang(OpenFangError::Internal(format!(
+                    return Err(KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                         "Unknown skill: {name}"
                     ))));
                 }
@@ -2991,7 +2991,7 @@ impl OpenFangKernel {
 
         self.registry
             .update_skills(agent_id, skills.clone())
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         if let Some(entry) = self.registry.get(agent_id) {
             let _ = self.memory.save_agent(&entry);
@@ -3013,14 +3013,14 @@ impl OpenFangKernel {
                 let mut known_servers: std::collections::HashSet<String> =
                     std::collections::HashSet::new();
                 for tool in mcp_tools.iter() {
-                    if let Some(s) = openfang_runtime::mcp::extract_mcp_server(&tool.name) {
+                    if let Some(s) = tapthe_ai_runtime::mcp::extract_mcp_server(&tool.name) {
                         known_servers.insert(s.to_string());
                     }
                 }
                 for name in &servers {
-                    let normalized = openfang_runtime::mcp::normalize_name(name);
+                    let normalized = tapthe_ai_runtime::mcp::normalize_name(name);
                     if !known_servers.contains(&normalized) {
-                        return Err(KernelError::OpenFang(OpenFangError::Internal(format!(
+                        return Err(KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                             "Unknown MCP server: {name}"
                         ))));
                     }
@@ -3030,7 +3030,7 @@ impl OpenFangKernel {
 
         self.registry
             .update_mcp_servers(agent_id, servers.clone())
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         if let Some(entry) = self.registry.get(agent_id) {
             let _ = self.memory.save_agent(&entry);
@@ -3049,7 +3049,7 @@ impl OpenFangKernel {
     ) -> KernelResult<()> {
         self.registry
             .update_tool_filters(agent_id, allowlist.clone(), blocklist.clone())
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         if let Some(entry) = self.registry.get(agent_id) {
             let _ = self.memory.save_agent(&entry);
@@ -3067,13 +3067,13 @@ impl OpenFangKernel {
     /// Get session token usage and estimated cost for an agent.
     pub fn session_usage_cost(&self, agent_id: AgentId) -> KernelResult<(u64, u64, f64)> {
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let session = self
             .memory
             .get_session(entry.session_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         let (input_tokens, output_tokens) = session
             .map(|s| {
@@ -3084,9 +3084,9 @@ impl OpenFangKernel {
                     let len = msg.content.text_content().len() as u64;
                     let tokens = len / 4;
                     match msg.role {
-                        openfang_types::message::Role::User => input += tokens,
-                        openfang_types::message::Role::Assistant => output += tokens,
-                        openfang_types::message::Role::System => input += tokens,
+                        tapthe_ai_types::message::Role::User => input += tokens,
+                        tapthe_ai_types::message::Role::Assistant => output += tokens,
+                        tapthe_ai_types::message::Role::System => input += tokens,
                     }
                 }
                 (input, output)
@@ -3120,17 +3120,17 @@ impl OpenFangKernel {
     /// Replaces the existing text-truncation compaction with an intelligent
     /// LLM-generated summary of older messages, keeping only recent messages.
     pub async fn compact_agent_session(&self, agent_id: AgentId) -> KernelResult<String> {
-        use openfang_runtime::compactor::{compact_session, needs_compaction, CompactionConfig};
+        use tapthe_ai_runtime::compactor::{compact_session, needs_compaction, CompactionConfig};
 
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let session = self
             .memory
             .get_session(entry.session_id)
-            .map_err(KernelError::OpenFang)?
-            .unwrap_or_else(|| openfang_memory::session::Session {
+            .map_err(KernelError::Tapthe.ai)?
+            .unwrap_or_else(|| tapthe_ai_memory::session::Session {
                 id: entry.session_id,
                 agent_id,
                 messages: Vec::new(),
@@ -3153,23 +3153,23 @@ impl OpenFangKernel {
 
         let result = compact_session(driver, &model, &session, &config)
             .await
-            .map_err(|e| KernelError::OpenFang(OpenFangError::Internal(e)))?;
+            .map_err(|e| KernelError::Tapthe.ai(TaptheAiError::Internal(e)))?;
 
         // Store the LLM summary in the canonical session
         self.memory
             .store_llm_summary(agent_id, &result.summary, result.kept_messages.clone())
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Post-compaction audit: validate and repair the kept messages
         let (repaired_messages, repair_stats) =
-            openfang_runtime::session_repair::validate_and_repair_with_stats(&result.kept_messages);
+            tapthe_ai_runtime::session_repair::validate_and_repair_with_stats(&result.kept_messages);
 
         // Also update the regular session with the repaired messages
         let mut updated_session = session;
         updated_session.messages = repaired_messages;
         self.memory
             .save_session(&updated_session)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
 
         // Build result message with audit summary
         let mut msg = format!(
@@ -3201,18 +3201,18 @@ impl OpenFangKernel {
     pub fn context_report(
         &self,
         agent_id: AgentId,
-    ) -> KernelResult<openfang_runtime::compactor::ContextReport> {
-        use openfang_runtime::compactor::generate_context_report;
+    ) -> KernelResult<tapthe_ai_runtime::compactor::ContextReport> {
+        use tapthe_ai_runtime::compactor::generate_context_report;
 
         let entry = self.registry.get(agent_id).ok_or_else(|| {
-            KernelError::OpenFang(OpenFangError::AgentNotFound(agent_id.to_string()))
+            KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(agent_id.to_string()))
         })?;
 
         let session = self
             .memory
             .get_session(entry.session_id)
-            .map_err(KernelError::OpenFang)?
-            .unwrap_or_else(|| openfang_memory::session::Session {
+            .map_err(KernelError::Tapthe.ai)?
+            .unwrap_or_else(|| tapthe_ai_memory::session::Session {
                 id: entry.session_id,
                 agent_id,
                 messages: Vec::new(),
@@ -3243,7 +3243,7 @@ impl OpenFangKernel {
         let entry = self
             .registry
             .remove(agent_id)
-            .map_err(KernelError::OpenFang)?;
+            .map_err(KernelError::Tapthe.ai)?;
         self.background.stop_agent(agent_id);
         self.scheduler.unregister(agent_id);
         self.capabilities.revoke_all(agent_id);
@@ -3264,7 +3264,7 @@ impl OpenFangKernel {
         // SECURITY: Record agent kill in audit trail
         self.audit_log.record(
             agent_id.to_string(),
-            openfang_runtime::audit::AuditAction::AgentKill,
+            tapthe_ai_runtime::audit::AuditAction::AgentKill,
             format!("name={}", entry.name),
             "ok",
         );
@@ -3280,14 +3280,14 @@ impl OpenFangKernel {
         &self,
         hand_id: &str,
         config: std::collections::HashMap<String, serde_json::Value>,
-    ) -> KernelResult<openfang_hands::HandInstance> {
-        use openfang_hands::HandError;
+    ) -> KernelResult<tapthe_ai_hands::HandInstance> {
+        use tapthe_ai_hands::HandError;
 
         let def = self
             .hand_registry
             .get_definition(hand_id)
             .ok_or_else(|| {
-                KernelError::OpenFang(OpenFangError::AgentNotFound(format!(
+                KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(format!(
                     "Hand not found: {hand_id}"
                 )))
             })?
@@ -3298,10 +3298,10 @@ impl OpenFangKernel {
             .hand_registry
             .activate(hand_id, config)
             .map_err(|e| match e {
-                HandError::AlreadyActive(id) => KernelError::OpenFang(OpenFangError::Internal(
+                HandError::AlreadyActive(id) => KernelError::Tapthe.ai(TaptheAiError::Internal(
                     format!("Hand already active: {id}"),
                 )),
-                other => KernelError::OpenFang(OpenFangError::Internal(other.to_string())),
+                other => KernelError::Tapthe.ai(TaptheAiError::Internal(other.to_string())),
             })?;
 
         // Build an agent manifest from the hand definition.
@@ -3360,8 +3360,8 @@ impl OpenFangKernel {
             mcp_servers: def.mcp_servers.clone(),
             // Hands are curated packages — if they declare shell_exec, grant full exec access
             exec_policy: if def.tools.iter().any(|t| t == "shell_exec") {
-                Some(openfang_types::config::ExecPolicy {
-                    mode: openfang_types::config::ExecSecurityMode::Full,
+                Some(tapthe_ai_types::config::ExecPolicy {
+                    mode: tapthe_ai_types::config::ExecSecurityMode::Full,
                     timeout_secs: 300, // hands may run long commands (ffmpeg, yt-dlp)
                     no_output_timeout_secs: 120,
                     ..Default::default()
@@ -3381,7 +3381,7 @@ impl OpenFangKernel {
         };
 
         // Resolve hand settings → prompt block + env vars
-        let resolved = openfang_hands::resolve_settings(&def.settings, &instance.config);
+        let resolved = tapthe_ai_hands::resolve_settings(&def.settings, &instance.config);
         if !resolved.prompt_block.is_empty() {
             manifest.model.system_prompt = format!(
                 "{}\n\n---\n\n{}",
@@ -3392,8 +3392,8 @@ impl OpenFangKernel {
         let mut allowed_env = resolved.env_vars;
         for req in &def.requires {
             match req.requirement_type {
-                openfang_hands::RequirementType::ApiKey
-                | openfang_hands::RequirementType::EnvVar => {
+                tapthe_ai_hands::RequirementType::ApiKey
+                | tapthe_ai_hands::RequirementType::EnvVar => {
                     if !req.check_value.is_empty() && !allowed_env.contains(&req.check_value) {
                         allowed_env.push(req.check_value.clone());
                     }
@@ -3466,7 +3466,7 @@ impl OpenFangKernel {
         // Link agent to instance
         self.hand_registry
             .set_agent(instance.instance_id, agent_id)
-            .map_err(|e| KernelError::OpenFang(OpenFangError::Internal(e.to_string())))?;
+            .map_err(|e| KernelError::Tapthe.ai(TaptheAiError::Internal(e.to_string())))?;
 
         info!(
             hand = %hand_id,
@@ -3490,7 +3490,7 @@ impl OpenFangKernel {
         let instance = self
             .hand_registry
             .deactivate(instance_id)
-            .map_err(|e| KernelError::OpenFang(OpenFangError::Internal(e.to_string())))?;
+            .map_err(|e| KernelError::Tapthe.ai(TaptheAiError::Internal(e.to_string())))?;
 
         if let Some(agent_id) = instance.agent_id {
             if let Err(e) = self.kill_agent(agent_id) {
@@ -3526,14 +3526,14 @@ impl OpenFangKernel {
     pub fn pause_hand(&self, instance_id: uuid::Uuid) -> KernelResult<()> {
         self.hand_registry
             .pause(instance_id)
-            .map_err(|e| KernelError::OpenFang(OpenFangError::Internal(e.to_string())))
+            .map_err(|e| KernelError::Tapthe.ai(TaptheAiError::Internal(e.to_string())))
     }
 
     /// Resume a paused hand.
     pub fn resume_hand(&self, instance_id: uuid::Uuid) -> KernelResult<()> {
         self.hand_registry
             .resume(instance_id)
-            .map_err(|e| KernelError::OpenFang(OpenFangError::Internal(e.to_string())))
+            .map_err(|e| KernelError::Tapthe.ai(TaptheAiError::Internal(e.to_string())))
     }
 
     /// Set the weak self-reference for trigger dispatch.
@@ -3546,7 +3546,7 @@ impl OpenFangKernel {
     // ─── Agent Binding management ──────────────────────────────────────
 
     /// List all agent bindings.
-    pub fn list_bindings(&self) -> Vec<openfang_types::config::AgentBinding> {
+    pub fn list_bindings(&self) -> Vec<tapthe_ai_types::config::AgentBinding> {
         self.bindings
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -3554,7 +3554,7 @@ impl OpenFangKernel {
     }
 
     /// Add a binding at runtime.
-    pub fn add_binding(&self, binding: openfang_types::config::AgentBinding) {
+    pub fn add_binding(&self, binding: tapthe_ai_types::config::AgentBinding) {
         let mut bindings = self.bindings.lock().unwrap_or_else(|e| e.into_inner());
         bindings.push(binding);
         // Sort by specificity descending
@@ -3562,7 +3562,7 @@ impl OpenFangKernel {
     }
 
     /// Remove a binding by index, returns the removed binding if valid.
-    pub fn remove_binding(&self, index: usize) -> Option<openfang_types::config::AgentBinding> {
+    pub fn remove_binding(&self, index: usize) -> Option<tapthe_ai_types::config::AgentBinding> {
         let mut bindings = self.bindings.lock().unwrap_or_else(|e| e.into_inner());
         if index < bindings.len() {
             Some(bindings.remove(index))
@@ -3607,7 +3607,7 @@ impl OpenFangKernel {
     fn apply_hot_actions(
         &self,
         plan: &crate::config_reload::ReloadPlan,
-        new_config: &openfang_types::config::KernelConfig,
+        new_config: &tapthe_ai_types::config::KernelConfig,
     ) {
         use crate::config_reload::HotAction;
 
@@ -3697,7 +3697,7 @@ impl OpenFangKernel {
     ) -> KernelResult<TriggerId> {
         // Verify agent exists
         if self.registry.get(agent_id).is_none() {
-            return Err(KernelError::OpenFang(OpenFangError::AgentNotFound(
+            return Err(KernelError::Tapthe.ai(TaptheAiError::AgentNotFound(
                 agent_id.to_string(),
             )));
         }
@@ -3740,7 +3740,7 @@ impl OpenFangKernel {
             .create_run(workflow_id, input)
             .await
             .ok_or_else(|| {
-                KernelError::OpenFang(OpenFangError::Internal("Workflow not found".to_string()))
+                KernelError::Tapthe.ai(TaptheAiError::Internal("Workflow not found".to_string()))
             })?;
 
         // Agent resolver: looks up by name or ID in the registry
@@ -3781,12 +3781,12 @@ impl OpenFangKernel {
         )
         .await
         .map_err(|_| {
-            KernelError::OpenFang(OpenFangError::Internal(format!(
+            KernelError::Tapthe.ai(TaptheAiError::Internal(format!(
                 "Workflow timed out after {MAX_WORKFLOW_SECS}s"
             )))
         })?
         .map_err(|e| {
-            KernelError::OpenFang(OpenFangError::Internal(format!("Workflow failed: {e}")))
+            KernelError::Tapthe.ai(TaptheAiError::Internal(format!("Workflow failed: {e}")))
         })?;
 
         Ok((run_id, output))
@@ -3843,7 +3843,7 @@ impl OpenFangKernel {
     pub fn start_background_agents(self: &Arc<Self>) {
         // Restore previously active hands from persisted state
         let state_path = self.config.home_dir.join("hand_state.json");
-        let saved_hands = openfang_hands::registry::HandRegistry::load_state(&state_path);
+        let saved_hands = tapthe_ai_hands::registry::HandRegistry::load_state(&state_path);
         if !saved_hands.is_empty() {
             info!("Restoring {} persisted hand(s)", saved_hands.len());
             for (hand_id, config, old_agent_id) in saved_hands {
@@ -3897,7 +3897,7 @@ impl OpenFangKernel {
         }
 
         let agents = self.registry.list();
-        let mut bg_agents: Vec<(openfang_types::agent::AgentId, String, ScheduleMode)> = Vec::new();
+        let mut bg_agents: Vec<(tapthe_ai_types::agent::AgentId, String, ScheduleMode)> = Vec::new();
 
         for entry in &agents {
             if matches!(entry.manifest.schedule, ScheduleMode::Reactive) {
@@ -3956,7 +3956,7 @@ impl OpenFangKernel {
 
                 for (provider_id, base_url) in &local_providers {
                     let result =
-                        openfang_runtime::provider_health::probe_provider(provider_id, base_url)
+                        tapthe_ai_runtime::provider_health::probe_provider(provider_id, base_url)
                             .await;
                     if result.reachable {
                         info!(
@@ -4143,7 +4143,7 @@ impl OpenFangKernel {
                 let kernel = Arc::clone(self);
                 let agents = a2a_config.external_agents.clone();
                 tokio::spawn(async move {
-                    let discovered = openfang_runtime::a2a::discover_external_agents(&agents).await;
+                    let discovered = tapthe_ai_runtime::a2a::discover_external_agents(&agents).await;
                     if let Ok(mut store) = kernel.a2a_external_agents.lock() {
                         *store = discovered;
                     }
@@ -4166,7 +4166,7 @@ impl OpenFangKernel {
     /// Binds a TCP listener, registers with the peer registry, and connects
     /// to bootstrap peers from config.
     async fn start_ofp_node(self: &Arc<Self>) {
-        use openfang_wire::{PeerConfig, PeerNode, PeerRegistry};
+        use tapthe_ai_wire::{PeerConfig, PeerNode, PeerRegistry};
 
         let listen_addr_str = self
             .config
@@ -4192,7 +4192,7 @@ impl OpenFangKernel {
         };
 
         let node_id = uuid::Uuid::new_v4().to_string();
-        let node_name = gethostname().unwrap_or_else(|| "openfang-node".to_string());
+        let node_name = gethostname().unwrap_or_else(|| "tapthe-ai-node".to_string());
 
         let peer_config = PeerConfig {
             listen_addr,
@@ -4203,7 +4203,7 @@ impl OpenFangKernel {
 
         let registry = PeerRegistry::new();
 
-        let handle: Arc<dyn openfang_wire::peer::PeerHandle> = self.self_arc();
+        let handle: Arc<dyn tapthe_ai_wire::peer::PeerHandle> = self.self_arc();
 
         match PeerNode::start(peer_config, registry.clone(), handle.clone()).await {
             Ok((node, _accept_task)) => {
@@ -4450,7 +4450,7 @@ impl OpenFangKernel {
     /// This cleanly shuts down in-memory state but preserves persistent agent
     /// data so agents are restored on the next boot.
     pub fn shutdown(&self) {
-        info!("Shutting down OpenFang kernel...");
+        info!("Shutting down Tapthe.ai kernel...");
 
         // Kill WhatsApp gateway child process if running
         if let Ok(guard) = self.whatsapp_gateway_pid.lock() {
@@ -4486,7 +4486,7 @@ impl OpenFangKernel {
         }
 
         info!(
-            "OpenFang kernel shut down ({} agents preserved)",
+            "Tapthe.ai kernel shut down ({} agents preserved)",
             self.registry.list().len()
         );
     }
@@ -4645,7 +4645,7 @@ impl OpenFangKernel {
         if !manifest.fallback_models.is_empty() {
             // Primary driver uses the agent's own model name (already set in request)
             let mut chain: Vec<(
-                std::sync::Arc<dyn openfang_runtime::llm_driver::LlmDriver>,
+                std::sync::Arc<dyn tapthe_ai_runtime::llm_driver::LlmDriver>,
                 String,
             )> = vec![(primary.clone(), String::new())];
             for fb in &manifest.fallback_models {
@@ -4692,7 +4692,7 @@ impl OpenFangKernel {
             }
             if chain.len() > 1 {
                 return Ok(Arc::new(
-                    openfang_runtime::drivers::fallback::FallbackDriver::with_models(chain),
+                    tapthe_ai_runtime::drivers::fallback::FallbackDriver::with_models(chain),
                 ));
             }
         }
@@ -4702,8 +4702,8 @@ impl OpenFangKernel {
 
     /// Connect to all configured MCP servers and cache their tool definitions.
     async fn connect_mcp_servers(self: &Arc<Self>) {
-        use openfang_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
-        use openfang_types::config::McpTransportEntry;
+        use tapthe_ai_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
+        use tapthe_ai_types::config::McpTransportEntry;
 
         let servers = self
             .effective_mcp_servers
@@ -4782,8 +4782,8 @@ impl OpenFangKernel {
     ///
     /// Called by the API reload endpoint after CLI installs/removes integrations.
     pub async fn reload_extension_mcps(self: &Arc<Self>) -> Result<usize, String> {
-        use openfang_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
-        use openfang_types::config::McpTransportEntry;
+        use tapthe_ai_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
+        use tapthe_ai_types::config::McpTransportEntry;
 
         // 1. Reload installed integrations from disk
         let installed_count = {
@@ -4920,8 +4920,8 @@ impl OpenFangKernel {
 
     /// Reconnect a single extension MCP server by ID.
     pub async fn reconnect_extension_mcp(self: &Arc<Self>, id: &str) -> Result<usize, String> {
-        use openfang_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
-        use openfang_types::config::McpTransportEntry;
+        use tapthe_ai_runtime::mcp::{McpConnection, McpServerConfig, McpTransport};
+        use tapthe_ai_types::config::McpTransportEntry;
 
         // Find the config for this server
         let server_config = {
@@ -5051,7 +5051,7 @@ impl OpenFangKernel {
     fn available_tools_with_registry(
         &self,
         agent_id: AgentId,
-        skill_snapshot: Option<&openfang_skills::registry::SkillRegistry>,
+        skill_snapshot: Option<&tapthe_ai_skills::registry::SkillRegistry>,
     ) -> Vec<ToolDefinition> {
         let all_builtins = if self.config.browser.enabled {
             builtin_tool_definitions()
@@ -5161,12 +5161,12 @@ impl OpenFangKernel {
             } else {
                 let normalized: Vec<String> = mcp_allowlist
                     .iter()
-                    .map(|s| openfang_runtime::mcp::normalize_name(s))
+                    .map(|s| tapthe_ai_runtime::mcp::normalize_name(s))
                     .collect();
                 mcp_tools
                     .iter()
                     .filter(|t| {
-                        openfang_runtime::mcp::extract_mcp_server(&t.name)
+                        tapthe_ai_runtime::mcp::extract_mcp_server(&t.name)
                             .map(|s| normalized.iter().any(|n| n == s))
                             .unwrap_or(false)
                     })
@@ -5214,7 +5214,7 @@ impl OpenFangKernel {
             e.manifest
                 .exec_policy
                 .as_ref()
-                .is_some_and(|p| p.mode == openfang_types::config::ExecSecurityMode::Deny)
+                .is_some_and(|p| p.mode == tapthe_ai_types::config::ExecSecurityMode::Deny)
         });
         if exec_blocks_shell {
             all_tools.retain(|t| t.name != "shell_exec");
@@ -5241,7 +5241,7 @@ impl OpenFangKernel {
             return;
         }
         let skills_dir = self.config.home_dir.join("skills");
-        let mut fresh = openfang_skills::registry::SkillRegistry::new(skills_dir);
+        let mut fresh = tapthe_ai_skills::registry::SkillRegistry::new(skills_dir);
         let bundled = fresh.load_bundled();
         let user = fresh.load_all().unwrap_or(0);
         info!(bundled, user, "Skill registry hot-reloaded");
@@ -5265,7 +5265,7 @@ impl OpenFangKernel {
     /// Build a compact skill summary using the provided registry (which may
     /// include workspace skill overrides).
     fn build_skill_summary_from(
-        registry: &openfang_skills::registry::SkillRegistry,
+        registry: &tapthe_ai_skills::registry::SkillRegistry,
         skill_allowlist: &[String],
     ) -> String {
         let skills: Vec<_> = registry
@@ -5315,7 +5315,7 @@ impl OpenFangKernel {
         // Normalize allowlist for matching
         let normalized: Vec<String> = mcp_allowlist
             .iter()
-            .map(|s| openfang_runtime::mcp::normalize_name(s))
+            .map(|s| tapthe_ai_runtime::mcp::normalize_name(s))
             .collect();
 
         // Group tools by MCP server prefix (mcp_{server}_{tool})
@@ -5387,7 +5387,7 @@ impl OpenFangKernel {
     /// Collect prompt context using the provided registry (which may include
     /// workspace skill overrides).
     fn collect_prompt_context_from(
-        registry: &openfang_skills::registry::SkillRegistry,
+        registry: &tapthe_ai_skills::registry::SkillRegistry,
         skill_allowlist: &[String],
     ) -> String {
         let mut context_parts = Vec::new();
@@ -5400,7 +5400,7 @@ impl OpenFangKernel {
                     if !ctx.is_empty() {
                         let is_bundled = matches!(
                             skill.manifest.source,
-                            Some(openfang_skills::SkillSource::Bundled)
+                            Some(tapthe_ai_skills::SkillSource::Bundled)
                         );
                         if is_bundled {
                             // Bundled skills are trusted (shipped with binary)
@@ -5436,9 +5436,9 @@ impl OpenFangKernel {
     /// Records success/failure on the job's metadata just like the scheduler does.
     pub async fn cron_run_job(
         self: &Arc<Self>,
-        job: &openfang_types::scheduler::CronJob,
+        job: &tapthe_ai_types::scheduler::CronJob,
     ) -> Result<String, String> {
-        use openfang_types::scheduler::CronAction;
+        use tapthe_ai_types::scheduler::CronAction;
 
         let job_id = job.id;
         let agent_id = job.agent_id;
@@ -5635,7 +5635,7 @@ fn manifest_to_capabilities(manifest: &AgentManifest) -> Vec<Capability> {
 /// When the global budget config specifies limits and the agent still has
 /// the built-in defaults, override them so agents respect the user's config.
 fn apply_budget_defaults(
-    budget: &openfang_types::config::BudgetConfig,
+    budget: &tapthe_ai_types::config::BudgetConfig,
     resources: &mut ResourceQuota,
 ) {
     // Only override hourly if agent has unlimited (0.0) and global is set
@@ -5767,12 +5767,12 @@ pub fn shared_memory_agent_id() -> AgentId {
 
 /// Deliver a cron job's agent response to the configured delivery target.
 async fn cron_deliver_response(
-    kernel: &OpenFangKernel,
+    kernel: &TaptheAiKernel,
     agent_id: AgentId,
     response: &str,
-    delivery: &openfang_types::scheduler::CronDelivery,
+    delivery: &tapthe_ai_types::scheduler::CronDelivery,
 ) -> Result<(), String> {
-    use openfang_types::scheduler::CronDelivery;
+    use tapthe_ai_types::scheduler::CronDelivery;
 
     if response.is_empty() {
         return Ok(());
@@ -5850,14 +5850,14 @@ async fn cron_deliver_response(
 }
 
 #[async_trait]
-impl KernelHandle for OpenFangKernel {
+impl KernelHandle for TaptheAiKernel {
     async fn spawn_agent(
         &self,
         manifest_toml: &str,
         parent_id: Option<&str>,
     ) -> Result<(String, String), String> {
         // Verify manifest integrity if a signed manifest hash is present
-        let content_hash = openfang_types::manifest_signing::hash_manifest(manifest_toml);
+        let content_hash = tapthe_ai_types::manifest_signing::hash_manifest(manifest_toml);
         tracing::debug!(hash = %content_hash, "Manifest SHA-256 computed for integrity tracking");
 
         let manifest: AgentManifest =
@@ -5914,7 +5914,7 @@ impl KernelHandle for OpenFangKernel {
         let id: AgentId = agent_id
             .parse()
             .map_err(|_| "Invalid agent ID".to_string())?;
-        OpenFangKernel::kill_agent(self, id).map_err(|e| format!("Kill failed: {e}"))
+        TaptheAiKernel::kill_agent(self, id).map_err(|e| format!("Kill failed: {e}"))
     }
 
     fn memory_store(&self, key: &str, value: serde_json::Value) -> Result<(), String> {
@@ -6009,13 +6009,13 @@ impl KernelHandle for OpenFangKernel {
             EventTarget::Broadcast,
             EventPayload::Custom(payload_bytes),
         );
-        OpenFangKernel::publish_event(self, event).await;
+        TaptheAiKernel::publish_event(self, event).await;
         Ok(())
     }
 
     async fn knowledge_add_entity(
         &self,
-        entity: openfang_types::memory::Entity,
+        entity: tapthe_ai_types::memory::Entity,
     ) -> Result<String, String> {
         self.memory
             .add_entity(entity)
@@ -6025,7 +6025,7 @@ impl KernelHandle for OpenFangKernel {
 
     async fn knowledge_add_relation(
         &self,
-        relation: openfang_types::memory::Relation,
+        relation: tapthe_ai_types::memory::Relation,
     ) -> Result<String, String> {
         self.memory
             .add_relation(relation)
@@ -6035,8 +6035,8 @@ impl KernelHandle for OpenFangKernel {
 
     async fn knowledge_query(
         &self,
-        pattern: openfang_types::memory::GraphPattern,
-    ) -> Result<Vec<openfang_types::memory::GraphMatch>, String> {
+        pattern: tapthe_ai_types::memory::GraphPattern,
+    ) -> Result<Vec<tapthe_ai_types::memory::GraphMatch>, String> {
         self.memory
             .query_graph(pattern)
             .await
@@ -6051,7 +6051,7 @@ impl KernelHandle for OpenFangKernel {
         agent_id: &str,
         job_json: serde_json::Value,
     ) -> Result<String, String> {
-        use openfang_types::scheduler::{
+        use tapthe_ai_types::scheduler::{
             CronAction, CronDelivery, CronJob, CronJobId, CronSchedule,
         };
 
@@ -6071,7 +6071,7 @@ impl KernelHandle for OpenFangKernel {
         };
         let one_shot = job_json["one_shot"].as_bool().unwrap_or(false);
 
-        let aid = openfang_types::agent::AgentId(
+        let aid = tapthe_ai_types::agent::AgentId(
             uuid::Uuid::parse_str(agent_id).map_err(|e| format!("Invalid agent ID: {e}"))?,
         );
 
@@ -6106,7 +6106,7 @@ impl KernelHandle for OpenFangKernel {
     }
 
     async fn cron_list(&self, agent_id: &str) -> Result<Vec<serde_json::Value>, String> {
-        let aid = openfang_types::agent::AgentId(
+        let aid = tapthe_ai_types::agent::AgentId(
             uuid::Uuid::parse_str(agent_id).map_err(|e| format!("Invalid agent ID: {e}"))?,
         );
         let jobs = self.cron_scheduler.list_jobs(aid);
@@ -6118,7 +6118,7 @@ impl KernelHandle for OpenFangKernel {
     }
 
     async fn cron_cancel(&self, job_id: &str) -> Result<(), String> {
-        let id = openfang_types::scheduler::CronJobId(
+        let id = tapthe_ai_types::scheduler::CronJobId(
             uuid::Uuid::parse_str(job_id).map_err(|e| format!("Invalid job ID: {e}"))?,
         );
         self.cron_scheduler
@@ -6246,7 +6246,7 @@ impl KernelHandle for OpenFangKernel {
         tool_name: &str,
         action_summary: &str,
     ) -> Result<bool, String> {
-        use openfang_types::approval::{ApprovalDecision, ApprovalRequest as TypedRequest};
+        use tapthe_ai_types::approval::{ApprovalDecision, ApprovalRequest as TypedRequest};
 
         // Hand agents are curated trusted packages — auto-approve tool execution.
         // Check if this agent has a "hand:" tag indicating it was spawned by activate_hand().
@@ -6341,10 +6341,10 @@ impl KernelHandle for OpenFangKernel {
             })?
             .clone();
 
-        let user = openfang_channels::types::ChannelUser {
+        let user = tapthe_ai_channels::types::ChannelUser {
             platform_id: recipient.to_string(),
             display_name: recipient.to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
         let formatted = if channel == "wecom" {
@@ -6355,12 +6355,12 @@ impl KernelHandle for OpenFangKernel {
                 .as_ref()
                 .and_then(|c| c.overrides.output_format)
                 .unwrap_or(OutputFormat::PlainText);
-            openfang_channels::formatter::format_for_wecom(message, output_format)
+            tapthe_ai_channels::formatter::format_for_wecom(message, output_format)
         } else {
             message.to_string()
         };
 
-        let content = openfang_channels::types::ChannelContent::Text(formatted);
+        let content = tapthe_ai_channels::types::ChannelContent::Text(formatted);
 
         if let Some(tid) = thread_id {
             adapter
@@ -6403,18 +6403,18 @@ impl KernelHandle for OpenFangKernel {
             })?
             .clone();
 
-        let user = openfang_channels::types::ChannelUser {
+        let user = tapthe_ai_channels::types::ChannelUser {
             platform_id: recipient.to_string(),
             display_name: recipient.to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
         let content = match media_type {
-            "image" => openfang_channels::types::ChannelContent::Image {
+            "image" => tapthe_ai_channels::types::ChannelContent::Image {
                 url: media_url.to_string(),
                 caption: caption.map(|s| s.to_string()),
             },
-            "file" => openfang_channels::types::ChannelContent::File {
+            "file" => tapthe_ai_channels::types::ChannelContent::File {
                 url: media_url.to_string(),
                 filename: filename.unwrap_or("file").to_string(),
             },
@@ -6468,13 +6468,13 @@ impl KernelHandle for OpenFangKernel {
             })?
             .clone();
 
-        let user = openfang_channels::types::ChannelUser {
+        let user = tapthe_ai_channels::types::ChannelUser {
             platform_id: recipient.to_string(),
             display_name: recipient.to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
-        let content = openfang_channels::types::ChannelContent::FileData {
+        let content = tapthe_ai_channels::types::ChannelContent::FileData {
             data,
             filename: filename.to_string(),
             mime_type: mime_type.to_string(),
@@ -6502,7 +6502,7 @@ impl KernelHandle for OpenFangKernel {
         &self,
         manifest_toml: &str,
         parent_id: Option<&str>,
-        parent_caps: &[openfang_types::capability::Capability],
+        parent_caps: &[tapthe_ai_types::capability::Capability],
     ) -> Result<(String, String), String> {
         // Parse the child manifest to extract its capabilities
         let child_manifest: AgentManifest =
@@ -6510,7 +6510,7 @@ impl KernelHandle for OpenFangKernel {
         let child_caps = manifest_to_capabilities(&child_manifest);
 
         // Enforce: child capabilities must be a subset of parent capabilities
-        openfang_types::capability::validate_capability_inheritance(parent_caps, &child_caps)?;
+        tapthe_ai_types::capability::validate_capability_inheritance(parent_caps, &child_caps)?;
 
         tracing::info!(
             parent = parent_id.unwrap_or("kernel"),
@@ -6527,12 +6527,12 @@ impl KernelHandle for OpenFangKernel {
 // --- OFP Wire Protocol integration ---
 
 #[async_trait]
-impl openfang_wire::peer::PeerHandle for OpenFangKernel {
-    fn local_agents(&self) -> Vec<openfang_wire::message::RemoteAgentInfo> {
+impl tapthe_ai_wire::peer::PeerHandle for TaptheAiKernel {
+    fn local_agents(&self) -> Vec<tapthe_ai_wire::message::RemoteAgentInfo> {
         self.registry
             .list()
             .iter()
-            .map(|entry| openfang_wire::message::RemoteAgentInfo {
+            .map(|entry| tapthe_ai_wire::message::RemoteAgentInfo {
                 id: entry.id.0.to_string(),
                 name: entry.name.clone(),
                 description: entry.manifest.description.clone(),
@@ -6568,7 +6568,7 @@ impl openfang_wire::peer::PeerHandle for OpenFangKernel {
         }
     }
 
-    fn discover_agents(&self, query: &str) -> Vec<openfang_wire::message::RemoteAgentInfo> {
+    fn discover_agents(&self, query: &str) -> Vec<tapthe_ai_wire::message::RemoteAgentInfo> {
         let q = query.to_lowercase();
         self.registry
             .list()
@@ -6582,7 +6582,7 @@ impl openfang_wire::peer::PeerHandle for OpenFangKernel {
                         .iter()
                         .any(|t| t.to_lowercase().contains(&q))
             })
-            .map(|entry| openfang_wire::message::RemoteAgentInfo {
+            .map(|entry| tapthe_ai_wire::message::RemoteAgentInfo {
                 id: entry.id.0.to_string(),
                 name: entry.name.clone(),
                 description: entry.manifest.description.clone(),
@@ -6775,7 +6775,7 @@ mod tests {
 
     #[test]
     fn test_manifest_to_capabilities_with_profile() {
-        use openfang_types::agent::ToolProfile;
+        use tapthe_ai_types::agent::ToolProfile;
         let manifest = AgentManifest {
             profile: Some(ToolProfile::Coding),
             ..Default::default()
@@ -6794,7 +6794,7 @@ mod tests {
 
     #[test]
     fn test_manifest_to_capabilities_profile_overridden_by_explicit_tools() {
-        use openfang_types::agent::ToolProfile;
+        use tapthe_ai_types::agent::ToolProfile;
         let mut manifest = AgentManifest {
             profile: Some(ToolProfile::Coding),
             ..Default::default()
@@ -6814,7 +6814,7 @@ mod tests {
     #[test]
     fn test_hand_activation_does_not_seed_runtime_tool_filters() {
         let tmp = tempfile::tempdir().unwrap();
-        let home_dir = tmp.path().join("openfang-kernel-hand-test");
+        let home_dir = tmp.path().join("tapthe-ai-kernel-hand-test");
         std::fs::create_dir_all(&home_dir).unwrap();
 
         let config = KernelConfig {
@@ -6823,7 +6823,7 @@ mod tests {
             ..KernelConfig::default()
         };
 
-        let kernel = OpenFangKernel::boot_with_config(config).expect("Kernel should boot");
+        let kernel = TaptheAiKernel::boot_with_config(config).expect("Kernel should boot");
         let instance = kernel
             .activate_hand("browser", HashMap::new())
             .expect("browser hand should activate");

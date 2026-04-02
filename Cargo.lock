@@ -3954,7 +3954,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-api"
+name = "tapthe-ai-api"
 version = "0.5.1"
 dependencies = [
  "async-trait",
@@ -3966,16 +3966,16 @@ dependencies = [
  "governor",
  "hex",
  "hmac",
- "openfang-channels",
- "openfang-extensions",
- "openfang-hands",
- "openfang-kernel",
- "openfang-memory",
- "openfang-migrate",
- "openfang-runtime",
- "openfang-skills",
- "openfang-types",
- "openfang-wire",
+ "tapthe-ai-channels",
+ "tapthe-ai-extensions",
+ "tapthe-ai-hands",
+ "tapthe-ai-kernel",
+ "tapthe-ai-memory",
+ "tapthe-ai-migrate",
+ "tapthe-ai-runtime",
+ "tapthe-ai-skills",
+ "tapthe-ai-types",
+ "tapthe-ai-wire",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -3994,7 +3994,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-channels"
+name = "tapthe-ai-channels"
 version = "0.5.1"
 dependencies = [
  "aes",
@@ -4012,7 +4012,7 @@ dependencies = [
  "lettre",
  "mailparse",
  "native-tls",
- "openfang-types",
+ "tapthe-ai-types",
  "prost",
  "regex-lite",
  "reqwest 0.12.28",
@@ -4033,20 +4033,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-cli"
+name = "tapthe-ai-cli"
 version = "0.5.1"
 dependencies = [
  "clap",
  "clap_complete",
  "colored",
  "dirs 6.0.0",
- "openfang-api",
- "openfang-extensions",
- "openfang-kernel",
- "openfang-migrate",
- "openfang-runtime",
- "openfang-skills",
- "openfang-types",
+ "tapthe-ai-api",
+ "tapthe-ai-extensions",
+ "tapthe-ai-kernel",
+ "tapthe-ai-migrate",
+ "tapthe-ai-runtime",
+ "tapthe-ai-skills",
+ "tapthe-ai-types",
  "ratatui",
  "reqwest 0.12.28",
  "serde",
@@ -4061,14 +4061,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-desktop"
+name = "tapthe-ai-desktop"
 version = "0.5.1"
 dependencies = [
  "axum",
  "open",
- "openfang-api",
- "openfang-kernel",
- "openfang-types",
+ "tapthe-ai-api",
+ "tapthe-ai-kernel",
+ "tapthe-ai-types",
  "serde",
  "serde_json",
  "tauri",
@@ -4087,7 +4087,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-extensions"
+name = "tapthe-ai-extensions"
 version = "0.5.1"
 dependencies = [
  "aes-gcm",
@@ -4097,7 +4097,7 @@ dependencies = [
  "chrono",
  "dashmap",
  "dirs 6.0.0",
- "openfang-types",
+ "tapthe-ai-types",
  "rand 0.8.5",
  "reqwest 0.12.28",
  "serde",
@@ -4115,12 +4115,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-hands"
+name = "tapthe-ai-hands"
 version = "0.5.1"
 dependencies = [
  "chrono",
  "dashmap",
- "openfang-types",
+ "tapthe-ai-types",
  "serde",
  "serde_json",
  "tempfile",
@@ -4132,7 +4132,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-kernel"
+name = "tapthe-ai-kernel"
 version = "0.5.1"
 dependencies = [
  "async-trait",
@@ -4145,14 +4145,14 @@ dependencies = [
  "futures",
  "hex",
  "libc",
- "openfang-channels",
- "openfang-extensions",
- "openfang-hands",
- "openfang-memory",
- "openfang-runtime",
- "openfang-skills",
- "openfang-types",
- "openfang-wire",
+ "tapthe-ai-channels",
+ "tapthe-ai-extensions",
+ "tapthe-ai-hands",
+ "tapthe-ai-memory",
+ "tapthe-ai-runtime",
+ "tapthe-ai-skills",
+ "tapthe-ai-types",
+ "tapthe-ai-wire",
  "rand 0.8.5",
  "reqwest 0.12.28",
  "serde",
@@ -4170,12 +4170,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-memory"
+name = "tapthe-ai-memory"
 version = "0.5.1"
 dependencies = [
  "async-trait",
  "chrono",
- "openfang-types",
+ "tapthe-ai-types",
  "reqwest 0.12.28",
  "rmp-serde",
  "rusqlite",
@@ -4190,13 +4190,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-migrate"
+name = "tapthe-ai-migrate"
 version = "0.5.1"
 dependencies = [
  "chrono",
  "dirs 6.0.0",
  "json5",
- "openfang-types",
+ "tapthe-ai-types",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -4209,7 +4209,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-runtime"
+name = "tapthe-ai-runtime"
 version = "0.5.1"
 dependencies = [
  "anyhow",
@@ -4221,9 +4221,9 @@ dependencies = [
  "futures",
  "hex",
  "http",
- "openfang-memory",
- "openfang-skills",
- "openfang-types",
+ "tapthe-ai-memory",
+ "tapthe-ai-skills",
+ "tapthe-ai-types",
  "regex-lite",
  "reqwest 0.12.28",
  "rmcp",
@@ -4245,12 +4245,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-skills"
+name = "tapthe-ai-skills"
 version = "0.5.1"
 dependencies = [
  "chrono",
  "hex",
- "openfang-types",
+ "tapthe-ai-types",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -4268,7 +4268,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-types"
+name = "tapthe-ai-types"
 version = "0.5.1"
 dependencies = [
  "async-trait",
@@ -4287,7 +4287,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfang-wire"
+name = "tapthe-ai-wire"
 version = "0.5.1"
 dependencies = [
  "async-trait",
@@ -4295,7 +4295,7 @@ dependencies = [
  "dashmap",
  "hex",
  "hmac",
- "openfang-types",
+ "tapthe-ai-types",
  "rand 0.8.5",
  "serde",
  "serde_json",

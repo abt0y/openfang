@@ -1,12 +1,12 @@
 [package]
-name = "openfang-migrate"
+name = "tapthe-ai-migrate"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Migration engine for importing from other agent frameworks into OpenFang"
+description = "Migration engine for importing from other agent frameworks into Tapthe.ai"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

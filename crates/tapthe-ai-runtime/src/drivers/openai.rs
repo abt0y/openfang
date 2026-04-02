@@ -6,8 +6,8 @@ use crate::llm_driver::{CompletionRequest, CompletionResponse, LlmDriver, LlmErr
 use crate::think_filter::{FilterAction, StreamingThinkFilter};
 use async_trait::async_trait;
 use futures::StreamExt;
-use openfang_types::message::{ContentBlock, MessageContent, Role, StopReason, TokenUsage};
-use openfang_types::tool::ToolCall;
+use tapthe_ai_types::message::{ContentBlock, MessageContent, Role, StopReason, TokenUsage};
+use tapthe_ai_types::tool::ToolCall;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use zeroize::Zeroizing;
@@ -425,7 +425,7 @@ impl LlmDriver for OpenAIDriver {
                 function: OaiToolDef {
                     name: t.name.clone(),
                     description: t.description.clone(),
-                    parameters: openfang_types::tool::normalize_schema_for_provider(
+                    parameters: tapthe_ai_types::tool::normalize_schema_for_provider(
                         &t.input_schema,
                         "openai",
                     ),
@@ -881,7 +881,7 @@ impl LlmDriver for OpenAIDriver {
                 function: OaiToolDef {
                     name: t.name.clone(),
                     description: t.description.clone(),
-                    parameters: openfang_types::tool::normalize_schema_for_provider(
+                    parameters: tapthe_ai_types::tool::normalize_schema_for_provider(
                         &t.input_schema,
                         "openai",
                     ),

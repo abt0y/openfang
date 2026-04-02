@@ -1,14 +1,14 @@
 [package]
-name = "openfang-runtime"
+name = "tapthe-ai-runtime"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Agent runtime and execution environment for OpenFang"
+description = "Agent runtime and execution environment for Tapthe.ai"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
-openfang-memory = { path = "../openfang-memory" }
-openfang-skills = { path = "../openfang-skills" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
+tapthe-ai-memory = { path = "../tapthe-ai-memory" }
+tapthe-ai-skills = { path = "../tapthe-ai-skills" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -14,8 +14,8 @@ pub struct AgentTemplate {
 
 /// Discover template directories. Checks:
 /// 1. The repo `agents/` dir (for dev builds)
-/// 2. `~/.openfang/agents/` (installed templates)
-/// 3. `OPENFANG_AGENTS_DIR` env var
+/// 2. `~/.tapthe-ai/agents/` (installed templates)
+/// 3. `TAPTHE_AI_AGENTS_DIR` env var
 pub fn discover_template_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
@@ -35,13 +35,13 @@ pub fn discover_template_dirs() -> Vec<PathBuf> {
         }
     }
 
-    // Installed templates (respects OPENFANG_HOME)
-    let of_home = if let Ok(h) = std::env::var("OPENFANG_HOME") {
+    // Installed templates (respects TAPTHE_AI_HOME)
+    let of_home = if let Ok(h) = std::env::var("TAPTHE_AI_HOME") {
         PathBuf::from(h)
     } else if let Some(home) = dirs::home_dir() {
-        home.join(".openfang")
+        home.join(".tapthe-ai")
     } else {
-        std::env::temp_dir().join(".openfang")
+        std::env::temp_dir().join(".tapthe-ai")
     };
     {
         let agents = of_home.join("agents");
@@ -51,7 +51,7 @@ pub fn discover_template_dirs() -> Vec<PathBuf> {
     }
 
     // Environment override
-    if let Ok(env_dir) = std::env::var("OPENFANG_AGENTS_DIR") {
+    if let Ok(env_dir) = std::env::var("TAPTHE_AI_AGENTS_DIR") {
         let p = PathBuf::from(env_dir);
         if p.is_dir() && !dirs.contains(&p) {
             dirs.push(p);

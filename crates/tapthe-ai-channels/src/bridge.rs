@@ -1,6 +1,6 @@
-//! Channel bridge — connects channel adapters to the OpenFang kernel.
+//! Channel bridge — connects channel adapters to the Tapthe.ai kernel.
 //!
-//! Defines `ChannelBridgeHandle` (implemented by openfang-api on the kernel) and
+//! Defines `ChannelBridgeHandle` (implemented by tapthe-ai-api on the kernel) and
 //! `BridgeManager` which owns running adapters and dispatches messages.
 
 use crate::formatter;
@@ -12,10 +12,10 @@ use crate::types::{
 use async_trait::async_trait;
 use dashmap::DashMap;
 use futures::StreamExt;
-use openfang_types::agent::AgentId;
-use openfang_types::approval::ApprovalRequest;
-use openfang_types::config::{ChannelOverrides, DmPolicy, GroupPolicy, OutputFormat};
-use openfang_types::message::ContentBlock;
+use tapthe_ai_types::agent::AgentId;
+use tapthe_ai_types::approval::ApprovalRequest;
+use tapthe_ai_types::config::{ChannelOverrides, DmPolicy, GroupPolicy, OutputFormat};
+use tapthe_ai_types::message::ContentBlock;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::watch;
@@ -69,7 +69,7 @@ fn is_channel_command(name: &str) -> bool {
 
 fn format_channel_help() -> String {
     let sections = ["General", "Session", "Info", "Automation", "Monitoring"];
-    let mut msg = String::from("OpenFang Bot Commands:");
+    let mut msg = String::from("Tapthe.ai Bot Commands:");
 
     for section in sections {
         let commands: Vec<&ChatCommandSpec> = channel_command_specs()
@@ -94,8 +94,8 @@ fn format_channel_help() -> String {
 
 /// Kernel operations needed by channel adapters.
 ///
-/// Defined here to avoid circular deps (openfang-channels can't depend on openfang-kernel).
-/// Implemented in openfang-api on the actual kernel.
+/// Defined here to avoid circular deps (tapthe-ai-channels can't depend on tapthe-ai-kernel).
+/// Implemented in tapthe-ai-api on the actual kernel.
 #[async_trait]
 pub trait ChannelBridgeHandle: Send + Sync {
     /// Send a message to an agent and get the text response.
@@ -815,7 +815,7 @@ async fn dispatch_message(
             let mut responses = Vec::new();
 
             match strategy {
-                openfang_types::config::BroadcastStrategy::Parallel => {
+                tapthe_ai_types::config::BroadcastStrategy::Parallel => {
                     let mut handles_vec = Vec::new();
                     for (name, maybe_id) in &targets {
                         if let Some(aid) = maybe_id {
@@ -838,7 +838,7 @@ async fn dispatch_message(
                         }
                     }
                 }
-                openfang_types::config::BroadcastStrategy::Sequential => {
+                tapthe_ai_types::config::BroadcastStrategy::Sequential => {
                     for (name, maybe_id) in &targets {
                         if let Some(aid) = maybe_id {
                             match handle.send_message(*aid, &text).await {
@@ -862,7 +862,7 @@ async fn dispatch_message(
     let agent_id = router.resolve(
         &message.channel,
         &message.sender.platform_id,
-        message.sender.openfang_user.as_deref(),
+        message.sender.tapthe_ai_user.as_deref(),
     );
 
     let agent_id = match agent_id {
@@ -1296,7 +1296,7 @@ async fn dispatch_with_blocks(
     let agent_id = router.resolve(
         &message.channel,
         &message.sender.platform_id,
-        message.sender.openfang_user.as_deref(),
+        message.sender.tapthe_ai_user.as_deref(),
     );
 
     let agent_id = match agent_id {
@@ -1491,7 +1491,7 @@ async fn handle_command(
     match name {
         "start" => {
             let agents = handle.list_agents().await.unwrap_or_default();
-            let mut msg = "Welcome to OpenFang! I connect you to AI agents.\n\nAvailable agents:\n"
+            let mut msg = "Welcome to Tapthe.ai! I connect you to AI agents.\n\nAvailable agents:\n"
                 .to_string();
             if agents.is_empty() {
                 msg.push_str("  (none running)\n");
@@ -1555,7 +1555,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => handle
@@ -1569,7 +1569,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => handle
@@ -1583,7 +1583,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => {
@@ -1607,7 +1607,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => handle
@@ -1621,7 +1621,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => handle
@@ -1635,7 +1635,7 @@ async fn handle_command(
             let agent_id = router.resolve(
                 &crate::types::ChannelType::CLI,
                 &sender.platform_id,
-                sender.openfang_user.as_deref(),
+                sender.tapthe_ai_user.as_deref(),
             );
             match agent_id {
                 Some(aid) => {
@@ -1797,7 +1797,7 @@ mod tests {
         let sender = ChannelUser {
             platform_id: "user1".to_string(),
             display_name: "Test".to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
         let result = handle_command("agents", &[], &handle, &router, &sender).await;
@@ -1817,7 +1817,7 @@ mod tests {
         let sender = ChannelUser {
             platform_id: "user1".to_string(),
             display_name: "Test".to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
         // Select existing agent
@@ -1840,7 +1840,7 @@ mod tests {
         let sender = ChannelUser {
             platform_id: "user1".to_string(),
             display_name: "Test".to_string(),
-            openfang_user: None,
+            tapthe_ai_user: None,
         };
 
         let result = handle_command("agent", &[], &handle, &router, &sender).await;

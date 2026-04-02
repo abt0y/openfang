@@ -1,12 +1,12 @@
 [package]
-name = "openfang-extensions"
+name = "tapthe-ai-extensions"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Extension & integration system for OpenFang — one-click MCP server setup, credential vault, OAuth2 PKCE"
+description = "Extension & integration system for Tapthe.ai — one-click MCP server setup, credential vault, OAuth2 PKCE"
 
 [dependencies]
-openfang-types = { path = "../openfang-types" }
+tapthe-ai-types = { path = "../tapthe-ai-types" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }

@@ -1,41 +1,41 @@
-# OpenFang CLI Reference
+# Tapthe.ai CLI Reference
 
-Complete command-line reference for `openfang`, the CLI tool for the OpenFang Agent OS.
+Complete command-line reference for `tapthe-ai`, the CLI tool for the Tapthe.ai Agent OS.
 
 ## Overview
 
-The `openfang` binary is the primary interface for managing the OpenFang Agent OS. It supports two modes of operation:
+The `tapthe-ai` binary is the primary interface for managing the Tapthe.ai Agent OS. It supports two modes of operation:
 
-- **Daemon mode** -- When a daemon is running (`openfang start`), CLI commands communicate with it over HTTP. This is the recommended mode for production use.
+- **Daemon mode** -- When a daemon is running (`tapthe-ai start`), CLI commands communicate with it over HTTP. This is the recommended mode for production use.
 - **In-process mode** -- When no daemon is detected, commands that support it will boot an ephemeral in-process kernel. Agents spawned in this mode are not persisted and will be lost when the process exits.
 
-Running `openfang` with no subcommand launches the interactive TUI (terminal user interface) built with ratatui, which provides a full dashboard experience in the terminal.
+Running `tapthe-ai` with no subcommand launches the interactive TUI (terminal user interface) built with ratatui, which provides a full dashboard experience in the terminal.
 
 ## Installation
 
 ### From source (cargo)
 
 ```bash
-cargo install --path crates/openfang-cli
+cargo install --path crates/tapthe-ai-cli
 ```
 
 ### Build from workspace
 
 ```bash
-cargo build --release -p openfang-cli
-# Binary: target/release/openfang (or openfang.exe on Windows)
+cargo build --release -p tapthe-ai-cli
+# Binary: target/release/tapthe-ai (or tapthe-ai.exe on Windows)
 ```
 
 ### Docker
 
 ```bash
-docker run -it openfang/openfang:latest
+docker run -it tapthe-ai/tapthe-ai:latest
 ```
 
 ### Shell installer
 
 ```bash
-curl -fsSL https://get.openfang.ai | sh
+curl -fsSL https://get.tapthe-ai.ai | sh
 ```
 
 ## Global Options
@@ -44,42 +44,42 @@ These options apply to all commands.
 
 | Option | Description |
 |---|---|
-| `--config <PATH>` | Path to a custom config file. Overrides the default `~/.openfang/config.toml`. |
+| `--config <PATH>` | Path to a custom config file. Overrides the default `~/.tapthe-ai/config.toml`. |
 | `--help` | Print help information for any command or subcommand. |
-| `--version` | Print the version of the `openfang` binary. |
+| `--version` | Print the version of the `tapthe-ai` binary. |
 
 **Environment variables:**
 
 | Variable | Description |
 |---|---|
-| `RUST_LOG` | Controls log verbosity (e.g. `info`, `debug`, `openfang_kernel=trace`). |
-| `OPENFANG_AGENTS_DIR` | Override the agent templates directory. |
-| `EDITOR` / `VISUAL` | Editor used by `openfang config edit`. Falls back to `notepad` (Windows) or `vi` (Unix). |
+| `RUST_LOG` | Controls log verbosity (e.g. `info`, `debug`, `tapthe_ai_kernel=trace`). |
+| `TAPTHE_AI_AGENTS_DIR` | Override the agent templates directory. |
+| `EDITOR` / `VISUAL` | Editor used by `tapthe-ai config edit`. Falls back to `notepad` (Windows) or `vi` (Unix). |
 
 ---
 
 ## Command Reference
 
-### openfang (no subcommand)
+### tapthe-ai (no subcommand)
 
 Launch the interactive TUI dashboard.
 
 ```
-openfang [--config <PATH>]
+tapthe-ai [--config <PATH>]
 ```
 
-The TUI provides a full-screen terminal interface with panels for agents, chat, workflows, channels, skills, settings, and more. Tracing output is redirected to `~/.openfang/tui.log` to avoid corrupting the terminal display.
+The TUI provides a full-screen terminal interface with panels for agents, chat, workflows, channels, skills, settings, and more. Tracing output is redirected to `~/.tapthe-ai/tui.log` to avoid corrupting the terminal display.
 
 Press `Ctrl+C` to exit. A second `Ctrl+C` force-exits the process.
 
 ---
 
-### openfang init
+### tapthe-ai init
 
-Initialize the OpenFang workspace. Creates `~/.openfang/` with subdirectories (`data/`, `agents/`) and a default `config.toml`.
+Initialize the Tapthe.ai workspace. Creates `~/.tapthe-ai/` with subdirectories (`data/`, `agents/`) and a default `config.toml`.
 
 ```
-openfang init [--quick]
+tapthe-ai init [--quick]
 ```
 
 **Options:**
@@ -98,35 +98,35 @@ openfang init [--quick]
 
 ```bash
 # Interactive setup
-openfang init
+tapthe-ai init
 
 # Non-interactive (CI/scripts)
 export GROQ_API_KEY="gsk_..."
-openfang init --quick
+tapthe-ai init --quick
 ```
 
 ---
 
-### openfang start
+### tapthe-ai start
 
-Start the OpenFang daemon (kernel + API server).
+Start the Tapthe.ai daemon (kernel + API server).
 
 ```
-openfang start [--config <PATH>]
+tapthe-ai start [--config <PATH>]
 ```
 
 **Behavior:**
 
 - Checks if a daemon is already running; exits with an error if so.
-- Boots the OpenFang kernel (loads config, initializes SQLite database, loads agents, connects MCP servers, starts background tasks).
+- Boots the Tapthe.ai kernel (loads config, initializes SQLite database, loads agents, connects MCP servers, starts background tasks).
 - Starts the HTTP API server on the address specified in `config.toml` (default: `127.0.0.1:4200`).
-- Writes `daemon.json` to `~/.openfang/` so other CLI commands can discover the running daemon.
+- Writes `daemon.json` to `~/.tapthe-ai/` so other CLI commands can discover the running daemon.
 - Blocks until interrupted with `Ctrl+C`.
 
 **Output:**
 
 ```
-  OpenFang Agent OS v0.1.0
+  Tapthe.ai Agent OS v0.1.0
 
   Starting daemon...
 
@@ -139,7 +139,7 @@ openfang start [--config <PATH>]
   Provider:   groq
   Model:      llama-3.3-70b-versatile
 
-  hint: Open the dashboard in your browser, or run `openfang chat`
+  hint: Open the dashboard in your browser, or run `tapthe-ai chat`
   hint: Press Ctrl+C to stop the daemon
 ```
 
@@ -147,20 +147,20 @@ openfang start [--config <PATH>]
 
 ```bash
 # Start with default config
-openfang start
+tapthe-ai start
 
 # Start with custom config
-openfang start --config /path/to/config.toml
+tapthe-ai start --config /path/to/config.toml
 ```
 
 ---
 
-### openfang status
+### tapthe-ai status
 
 Show the current kernel/daemon status.
 
 ```
-openfang status [--json]
+tapthe-ai status [--json]
 ```
 
 **Options:**
@@ -177,19 +177,19 @@ openfang status [--json]
 **Example:**
 
 ```bash
-openfang status
+tapthe-ai status
 
-openfang status --json | jq '.agent_count'
+tapthe-ai status --json | jq '.agent_count'
 ```
 
 ---
 
-### openfang doctor
+### tapthe-ai doctor
 
-Run diagnostic checks on the OpenFang installation.
+Run diagnostic checks on the Tapthe.ai installation.
 
 ```
-openfang doctor [--json] [--repair]
+tapthe-ai doctor [--json] [--repair]
 ```
 
 **Options:**
@@ -201,7 +201,7 @@ openfang doctor [--json] [--repair]
 
 **Checks performed:**
 
-1. **OpenFang directory** -- `~/.openfang/` exists
+1. **Tapthe.ai directory** -- `~/.tapthe-ai/` exists
 2. **.env file** -- exists and has correct permissions (0600 on Unix)
 3. **Config TOML syntax** -- `config.toml` parses without errors
 4. **Daemon status** -- whether a daemon is running
@@ -209,7 +209,7 @@ openfang doctor [--json] [--repair]
 6. **Stale daemon.json** -- leftover `daemon.json` from a crashed daemon
 7. **Database file** -- SQLite magic bytes validation
 8. **Disk space** -- warns if less than 100MB available (Unix only)
-9. **Agent manifests** -- validates all `.toml` files in `~/.openfang/agents/`
+9. **Agent manifests** -- validates all `.toml` files in `~/.tapthe-ai/agents/`
 10. **LLM provider keys** -- checks env vars for 10 providers (Groq, OpenRouter, Anthropic, OpenAI, DeepSeek, Gemini, Google, Together, Mistral, Fireworks), performs live validation (401/403 detection)
 11. **Channel tokens** -- format validation for Telegram, Discord, Slack tokens
 12. **Config consistency** -- checks that `api_key_env` references in config match actual environment variables
@@ -218,21 +218,21 @@ openfang doctor [--json] [--repair]
 **Example:**
 
 ```bash
-openfang doctor
+tapthe-ai doctor
 
-openfang doctor --repair
+tapthe-ai doctor --repair
 
-openfang doctor --json
+tapthe-ai doctor --json
 ```
 
 ---
 
-### openfang dashboard
+### tapthe-ai dashboard
 
 Open the web dashboard in the default browser.
 
 ```
-openfang dashboard
+tapthe-ai dashboard
 ```
 
 **Behavior:**
@@ -244,17 +244,17 @@ openfang dashboard
 **Example:**
 
 ```bash
-openfang dashboard
+tapthe-ai dashboard
 ```
 
 ---
 
-### openfang completion
+### tapthe-ai completion
 
 Generate shell completion scripts.
 
 ```
-openfang completion <SHELL>
+tapthe-ai completion <SHELL>
 ```
 
 **Arguments:**
@@ -267,28 +267,28 @@ openfang completion <SHELL>
 
 ```bash
 # Bash
-openfang completion bash > ~/.bash_completion.d/openfang
+tapthe-ai completion bash > ~/.bash_completion.d/tapthe-ai
 
 # Zsh
-openfang completion zsh > ~/.zfunc/_openfang
+tapthe-ai completion zsh > ~/.zfunc/_tapthe-ai
 
 # Fish
-openfang completion fish > ~/.config/fish/completions/openfang.fish
+tapthe-ai completion fish > ~/.config/fish/completions/tapthe-ai.fish
 
 # PowerShell
-openfang completion powershell > openfang.ps1
+tapthe-ai completion powershell > tapthe-ai.ps1
 ```
 
 ---
 
 ## Agent Commands
 
-### openfang agent new
+### tapthe-ai agent new
 
 Spawn an agent from a built-in template.
 
 ```
-openfang agent new [<TEMPLATE>]
+tapthe-ai agent new [<TEMPLATE>]
 ```
 
 **Arguments:**
@@ -299,7 +299,7 @@ openfang agent new [<TEMPLATE>]
 
 **Behavior:**
 
-- Templates are discovered from: the repo `agents/` directory (dev builds), `~/.openfang/agents/` (installed), and `OPENFANG_AGENTS_DIR` (env override).
+- Templates are discovered from: the repo `agents/` directory (dev builds), `~/.tapthe-ai/agents/` (installed), and `TAPTHE_AI_AGENTS_DIR` (env override).
 - Each template is a directory containing an `agent.toml` manifest.
 - In daemon mode: sends `POST /api/agents` with the manifest. Agent is persistent.
 - In standalone mode: boots an in-process kernel. Agent is ephemeral.
@@ -308,23 +308,23 @@ openfang agent new [<TEMPLATE>]
 
 ```bash
 # Interactive picker
-openfang agent new
+tapthe-ai agent new
 
 # Spawn by name
-openfang agent new coder
+tapthe-ai agent new coder
 
 # Spawn the assistant template
-openfang agent new assistant
+tapthe-ai agent new assistant
 ```
 
 ---
 
-### openfang agent spawn
+### tapthe-ai agent spawn
 
 Spawn an agent from a custom manifest file.
 
 ```
-openfang agent spawn <MANIFEST>
+tapthe-ai agent spawn <MANIFEST>
 ```
 
 **Arguments:**
@@ -342,17 +342,17 @@ openfang agent spawn <MANIFEST>
 **Example:**
 
 ```bash
-openfang agent spawn ./my-agent/agent.toml
+tapthe-ai agent spawn ./my-agent/agent.toml
 ```
 
 ---
 
-### openfang agent list
+### tapthe-ai agent list
 
 List all running agents.
 
 ```
-openfang agent list [--json]
+tapthe-ai agent list [--json]
 ```
 
 **Options:**
@@ -366,26 +366,26 @@ openfang agent list [--json]
 **Example:**
 
 ```bash
-openfang agent list
+tapthe-ai agent list
 
-openfang agent list --json | jq '.[].name'
+tapthe-ai agent list --json | jq '.[].name'
 ```
 
 ---
 
-### openfang agent chat
+### tapthe-ai agent chat
 
 Start an interactive chat session with a specific agent.
 
 ```
-openfang agent chat <AGENT_ID>
+tapthe-ai agent chat <AGENT_ID>
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |---|---|
-| `<AGENT_ID>` | Agent UUID. Obtain from `openfang agent list`. |
+| `<AGENT_ID>` | Agent UUID. Obtain from `tapthe-ai agent list`. |
 
 **Behavior:**
 
@@ -397,17 +397,17 @@ openfang agent chat <AGENT_ID>
 **Example:**
 
 ```bash
-openfang agent chat a1b2c3d4-e5f6-7890-abcd-ef1234567890
+tapthe-ai agent chat a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
 
 ---
 
-### openfang agent kill
+### tapthe-ai agent kill
 
 Terminate a running agent.
 
 ```
-openfang agent kill <AGENT_ID>
+tapthe-ai agent kill <AGENT_ID>
 ```
 
 **Arguments:**
@@ -419,7 +419,7 @@ openfang agent kill <AGENT_ID>
 **Example:**
 
 ```bash
-openfang agent kill a1b2c3d4-e5f6-7890-abcd-ef1234567890
+tapthe-ai agent kill a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
 
 ---
@@ -428,24 +428,24 @@ openfang agent kill a1b2c3d4-e5f6-7890-abcd-ef1234567890
 
 All workflow commands require a running daemon.
 
-### openfang workflow list
+### tapthe-ai workflow list
 
 List all registered workflows.
 
 ```
-openfang workflow list
+tapthe-ai workflow list
 ```
 
 **Output columns:** ID, NAME, STEPS, CREATED.
 
 ---
 
-### openfang workflow create
+### tapthe-ai workflow create
 
 Create a workflow from a JSON definition file.
 
 ```
-openfang workflow create <FILE>
+tapthe-ai workflow create <FILE>
 ```
 
 **Arguments:**
@@ -457,30 +457,30 @@ openfang workflow create <FILE>
 **Example:**
 
 ```bash
-openfang workflow create ./my-workflow.json
+tapthe-ai workflow create ./my-workflow.json
 ```
 
 ---
 
-### openfang workflow run
+### tapthe-ai workflow run
 
 Execute a workflow by ID.
 
 ```
-openfang workflow run <WORKFLOW_ID> <INPUT>
+tapthe-ai workflow run <WORKFLOW_ID> <INPUT>
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |---|---|
-| `<WORKFLOW_ID>` | Workflow UUID. Obtain from `openfang workflow list`. |
+| `<WORKFLOW_ID>` | Workflow UUID. Obtain from `tapthe-ai workflow list`. |
 | `<INPUT>` | Input text to pass to the workflow. |
 
 **Example:**
 
 ```bash
-openfang workflow run abc123 "Analyze this code for security issues"
+tapthe-ai workflow run abc123 "Analyze this code for security issues"
 ```
 
 ---
@@ -489,12 +489,12 @@ openfang workflow run abc123 "Analyze this code for security issues"
 
 All trigger commands require a running daemon.
 
-### openfang trigger list
+### tapthe-ai trigger list
 
 List all event triggers.
 
 ```
-openfang trigger list [--agent-id <ID>]
+tapthe-ai trigger list [--agent-id <ID>]
 ```
 
 **Options:**
@@ -507,12 +507,12 @@ openfang trigger list [--agent-id <ID>]
 
 ---
 
-### openfang trigger create
+### tapthe-ai trigger create
 
 Create an event trigger for an agent.
 
 ```
-openfang trigger create <AGENT_ID> <PATTERN_JSON> [--prompt <TEMPLATE>] [--max-fires <N>]
+tapthe-ai trigger create <AGENT_ID> <PATTERN_JSON> [--prompt <TEMPLATE>] [--max-fires <N>]
 ```
 
 **Arguments:**
@@ -533,26 +533,26 @@ openfang trigger create <AGENT_ID> <PATTERN_JSON> [--prompt <TEMPLATE>] [--max-f
 
 ```bash
 # Fire on any lifecycle event
-openfang trigger create <AGENT_ID> '{"lifecycle":{}}'
+tapthe-ai trigger create <AGENT_ID> '{"lifecycle":{}}'
 
 # Fire when a specific agent is spawned
-openfang trigger create <AGENT_ID> '{"agent_spawned":{"name_pattern":"*"}}'
+tapthe-ai trigger create <AGENT_ID> '{"agent_spawned":{"name_pattern":"*"}}'
 
 # Fire on agent termination
-openfang trigger create <AGENT_ID> '{"agent_terminated":{}}'
+tapthe-ai trigger create <AGENT_ID> '{"agent_terminated":{}}'
 
 # Fire on all events (limited to 10 fires)
-openfang trigger create <AGENT_ID> '{"all":{}}' --max-fires 10
+tapthe-ai trigger create <AGENT_ID> '{"all":{}}' --max-fires 10
 ```
 
 ---
 
-### openfang trigger delete
+### tapthe-ai trigger delete
 
 Delete a trigger by ID.
 
 ```
-openfang trigger delete <TRIGGER_ID>
+tapthe-ai trigger delete <TRIGGER_ID>
 ```
 
 **Arguments:**
@@ -565,26 +565,26 @@ openfang trigger delete <TRIGGER_ID>
 
 ## Skill Commands
 
-### openfang skill list
+### tapthe-ai skill list
 
 List all installed skills.
 
 ```
-openfang skill list
+tapthe-ai skill list
 ```
 
 **Output columns:** NAME, VERSION, TOOLS, DESCRIPTION.
 
-Loads skills from `~/.openfang/skills/` plus bundled skills compiled into the binary.
+Loads skills from `~/.tapthe-ai/skills/` plus bundled skills compiled into the binary.
 
 ---
 
-### openfang skill install
+### tapthe-ai skill install
 
 Install a skill from a local directory, git URL, or FangHub marketplace.
 
 ```
-openfang skill install <SOURCE>
+tapthe-ai skill install <SOURCE>
 ```
 
 **Arguments:**
@@ -602,23 +602,23 @@ openfang skill install <SOURCE>
 
 ```bash
 # Install from local directory
-openfang skill install ./my-skill/
+tapthe-ai skill install ./my-skill/
 
 # Install from FangHub
-openfang skill install web-search
+tapthe-ai skill install web-search
 
 # Install an OpenClaw-format skill
-openfang skill install ./openclaw-skill/
+tapthe-ai skill install ./openclaw-skill/
 ```
 
 ---
 
-### openfang skill remove
+### tapthe-ai skill remove
 
 Remove an installed skill.
 
 ```
-openfang skill remove <NAME>
+tapthe-ai skill remove <NAME>
 ```
 
 **Arguments:**
@@ -630,17 +630,17 @@ openfang skill remove <NAME>
 **Example:**
 
 ```bash
-openfang skill remove web-search
+tapthe-ai skill remove web-search
 ```
 
 ---
 
-### openfang skill search
+### tapthe-ai skill search
 
 Search the FangHub marketplace for skills.
 
 ```
-openfang skill search <QUERY>
+tapthe-ai skill search <QUERY>
 ```
 
 **Arguments:**
@@ -652,17 +652,17 @@ openfang skill search <QUERY>
 **Example:**
 
 ```bash
-openfang skill search "docker kubernetes"
+tapthe-ai skill search "docker kubernetes"
 ```
 
 ---
 
-### openfang skill create
+### tapthe-ai skill create
 
 Interactively scaffold a new skill project.
 
 ```
-openfang skill create
+tapthe-ai skill create
 ```
 
 **Behavior:**
@@ -672,14 +672,14 @@ Prompts for:
 - Description
 - Runtime (`python`, `node`, or `wasm`; defaults to `python`)
 
-Creates a directory under `~/.openfang/skills/<name>/` with:
+Creates a directory under `~/.tapthe-ai/skills/<name>/` with:
 - `skill.toml` -- manifest file
 - `src/main.py` (or `src/index.js`) -- entry point with boilerplate
 
 **Example:**
 
 ```bash
-openfang skill create
+tapthe-ai skill create
 # Skill name: my-tool
 # Description: A custom analysis tool
 # Runtime (python/node/wasm) [python]: python
@@ -689,12 +689,12 @@ openfang skill create
 
 ## Channel Commands
 
-### openfang channel list
+### tapthe-ai channel list
 
 List configured channels and their status.
 
 ```
-openfang channel list
+tapthe-ai channel list
 ```
 
 **Output columns:** CHANNEL, ENV VAR, STATUS.
@@ -705,12 +705,12 @@ Checks `config.toml` for channel configuration sections and environment variable
 
 ---
 
-### openfang channel setup
+### tapthe-ai channel setup
 
 Interactive setup wizard for a channel integration.
 
 ```
-openfang channel setup [<CHANNEL>]
+tapthe-ai channel setup [<CHANNEL>]
 ```
 
 **Arguments:**
@@ -724,7 +724,7 @@ openfang channel setup [<CHANNEL>]
 Each wizard:
 1. Displays step-by-step instructions for obtaining credentials.
 2. Prompts for tokens/credentials.
-3. Saves tokens to `~/.openfang/.env` with owner-only permissions.
+3. Saves tokens to `~/.tapthe-ai/.env` with owner-only permissions.
 4. Appends the channel configuration block to `config.toml` (prompts for confirmation).
 5. Warns to restart the daemon if one is running.
 
@@ -732,22 +732,22 @@ Each wizard:
 
 ```bash
 # Interactive picker
-openfang channel setup
+tapthe-ai channel setup
 
 # Direct setup
-openfang channel setup telegram
-openfang channel setup discord
-openfang channel setup slack
+tapthe-ai channel setup telegram
+tapthe-ai channel setup discord
+tapthe-ai channel setup slack
 ```
 
 ---
 
-### openfang channel test
+### tapthe-ai channel test
 
 Send a test message through a configured channel.
 
 ```
-openfang channel test <CHANNEL>
+tapthe-ai channel test <CHANNEL>
 ```
 
 **Arguments:**
@@ -761,17 +761,17 @@ Requires a running daemon. Sends `POST /api/channels/<channel>/test`.
 **Example:**
 
 ```bash
-openfang channel test telegram
+tapthe-ai channel test telegram
 ```
 
 ---
 
-### openfang channel enable
+### tapthe-ai channel enable
 
 Enable a channel integration.
 
 ```
-openfang channel enable <CHANNEL>
+tapthe-ai channel enable <CHANNEL>
 ```
 
 **Arguments:**
@@ -784,12 +784,12 @@ In daemon mode: sends `POST /api/channels/<channel>/enable`. Without a daemon: p
 
 ---
 
-### openfang channel disable
+### tapthe-ai channel disable
 
 Disable a channel without removing its configuration.
 
 ```
-openfang channel disable <CHANNEL>
+tapthe-ai channel disable <CHANNEL>
 ```
 
 **Arguments:**
@@ -804,36 +804,36 @@ In daemon mode: sends `POST /api/channels/<channel>/disable`. Without a daemon: 
 
 ## Config Commands
 
-### openfang config show
+### tapthe-ai config show
 
 Display the current configuration file.
 
 ```
-openfang config show
+tapthe-ai config show
 ```
 
-Prints the contents of `~/.openfang/config.toml` with the file path as a header comment.
+Prints the contents of `~/.tapthe-ai/config.toml` with the file path as a header comment.
 
 ---
 
-### openfang config edit
+### tapthe-ai config edit
 
 Open the configuration file in your editor.
 
 ```
-openfang config edit
+tapthe-ai config edit
 ```
 
 Uses `$EDITOR`, then `$VISUAL`, then falls back to `notepad` (Windows) or `vi` (Unix).
 
 ---
 
-### openfang config get
+### tapthe-ai config get
 
 Get a single configuration value by dotted key path.
 
 ```
-openfang config get <KEY>
+tapthe-ai config get <KEY>
 ```
 
 **Arguments:**
@@ -845,24 +845,24 @@ openfang config get <KEY>
 **Example:**
 
 ```bash
-openfang config get default_model.provider
+tapthe-ai config get default_model.provider
 # groq
 
-openfang config get api_listen
+tapthe-ai config get api_listen
 # 127.0.0.1:4200
 
-openfang config get memory.decay_rate
+tapthe-ai config get memory.decay_rate
 # 0.05
 ```
 
 ---
 
-### openfang config set
+### tapthe-ai config set
 
 Set a configuration value by dotted key path.
 
 ```
-openfang config set <KEY> <VALUE>
+tapthe-ai config set <KEY> <VALUE>
 ```
 
 **Arguments:**
@@ -877,19 +877,19 @@ openfang config set <KEY> <VALUE>
 **Example:**
 
 ```bash
-openfang config set default_model.provider anthropic
-openfang config set default_model.model claude-sonnet-4-20250514
-openfang config set api_listen "0.0.0.0:4200"
+tapthe-ai config set default_model.provider anthropic
+tapthe-ai config set default_model.model claude-sonnet-4-20250514
+tapthe-ai config set api_listen "0.0.0.0:4200"
 ```
 
 ---
 
-### openfang config set-key
+### tapthe-ai config set-key
 
-Save an LLM provider API key to `~/.openfang/.env`.
+Save an LLM provider API key to `~/.tapthe-ai/.env`.
 
 ```
-openfang config set-key <PROVIDER>
+tapthe-ai config set-key <PROVIDER>
 ```
 
 **Arguments:**
@@ -901,27 +901,27 @@ openfang config set-key <PROVIDER>
 **Behavior:**
 
 - Prompts interactively for the API key.
-- Saves to `~/.openfang/.env` as `<PROVIDER_NAME>_API_KEY=<value>`.
+- Saves to `~/.tapthe-ai/.env` as `<PROVIDER_NAME>_API_KEY=<value>`.
 - Runs a live validation test against the provider's API.
 - File permissions are restricted to owner-only on Unix.
 
 **Example:**
 
 ```bash
-openfang config set-key groq
+tapthe-ai config set-key groq
 # Paste your groq API key: gsk_...
-# [ok] Saved GROQ_API_KEY to ~/.openfang/.env
+# [ok] Saved GROQ_API_KEY to ~/.tapthe-ai/.env
 # Testing key... OK
 ```
 
 ---
 
-### openfang config delete-key
+### tapthe-ai config delete-key
 
-Remove an API key from `~/.openfang/.env`.
+Remove an API key from `~/.tapthe-ai/.env`.
 
 ```
-openfang config delete-key <PROVIDER>
+tapthe-ai config delete-key <PROVIDER>
 ```
 
 **Arguments:**
@@ -933,17 +933,17 @@ openfang config delete-key <PROVIDER>
 **Example:**
 
 ```bash
-openfang config delete-key openai
+tapthe-ai config delete-key openai
 ```
 
 ---
 
-### openfang config test-key
+### tapthe-ai config test-key
 
 Test provider connectivity with the stored API key.
 
 ```
-openfang config test-key <PROVIDER>
+tapthe-ai config test-key <PROVIDER>
 ```
 
 **Arguments:**
@@ -954,7 +954,7 @@ openfang config test-key <PROVIDER>
 
 **Behavior:**
 
-- Reads the API key from the environment (loaded from `~/.openfang/.env`).
+- Reads the API key from the environment (loaded from `~/.tapthe-ai/.env`).
 - Hits the provider's models/health endpoint.
 - Reports `OK` (key accepted) or `FAILED (401/403)` (key rejected).
 - Exits with code 1 on failure.
@@ -962,7 +962,7 @@ openfang config test-key <PROVIDER>
 **Example:**
 
 ```bash
-openfang config test-key groq
+tapthe-ai config test-key groq
 # Testing groq (GROQ_API_KEY)... OK
 ```
 
@@ -970,12 +970,12 @@ openfang config test-key groq
 
 ## Quick Chat
 
-### openfang chat
+### tapthe-ai chat
 
 Quick alias for starting a chat session.
 
 ```
-openfang chat [<AGENT>]
+tapthe-ai chat [<AGENT>]
 ```
 
 **Arguments:**
@@ -986,7 +986,7 @@ openfang chat [<AGENT>]
 
 **Behavior:**
 
-- **Daemon mode:** Finds the agent by name or ID among running agents. If no agent name is given, uses the first available agent. If no agents exist, suggests `openfang agent new`.
+- **Daemon mode:** Finds the agent by name or ID among running agents. If no agent name is given, uses the first available agent. If no agents exist, suggests `tapthe-ai agent new`.
 - **Standalone mode (no daemon):** Boots an in-process kernel and auto-spawns an agent from templates. Searches for an agent matching the given name, then falls back to `assistant`, then to the first available template.
 
 This is the simplest way to start chatting -- it works with or without a daemon.
@@ -995,25 +995,25 @@ This is the simplest way to start chatting -- it works with or without a daemon.
 
 ```bash
 # Chat with the default agent
-openfang chat
+tapthe-ai chat
 
 # Chat with a specific agent by name
-openfang chat coder
+tapthe-ai chat coder
 
 # Chat with a specific agent by UUID
-openfang chat a1b2c3d4-e5f6-7890-abcd-ef1234567890
+tapthe-ai chat a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
 
 ---
 
 ## Migration
 
-### openfang migrate
+### tapthe-ai migrate
 
 Migrate configuration and agents from another agent framework.
 
 ```
-openfang migrate --from <FRAMEWORK> [--source-dir <PATH>] [--dry-run]
+tapthe-ai migrate --from <FRAMEWORK> [--source-dir <PATH>] [--dry-run]
 ```
 
 **Options:**
@@ -1026,42 +1026,42 @@ openfang migrate --from <FRAMEWORK> [--source-dir <PATH>] [--dry-run]
 
 **Behavior:**
 
-- Converts agent configurations, YAML manifests, and settings from the source framework into OpenFang format.
-- Saves imported data to `~/.openfang/`.
+- Converts agent configurations, YAML manifests, and settings from the source framework into Tapthe.ai format.
+- Saves imported data to `~/.tapthe-ai/`.
 - Writes a `migration_report.md` summarizing what was imported.
 
 **Example:**
 
 ```bash
 # Dry run migration from OpenClaw
-openfang migrate --from openclaw --dry-run
+tapthe-ai migrate --from openclaw --dry-run
 
 # Migrate from OpenClaw (auto-detect source)
-openfang migrate --from openclaw
+tapthe-ai migrate --from openclaw
 
 # Migrate from LangChain with explicit source
-openfang migrate --from langchain --source-dir /home/user/.langchain
+tapthe-ai migrate --from langchain --source-dir /home/user/.langchain
 
 # Migrate from AutoGPT
-openfang migrate --from autogpt
+tapthe-ai migrate --from autogpt
 ```
 
 ---
 
 ## MCP Server
 
-### openfang mcp
+### tapthe-ai mcp
 
 Start an MCP (Model Context Protocol) server over stdio.
 
 ```
-openfang mcp
+tapthe-ai mcp
 ```
 
 **Behavior:**
 
-- Exposes running OpenFang agents as MCP tools via JSON-RPC 2.0 over stdin/stdout with Content-Length framing.
-- Each agent becomes a callable tool named `openfang_agent_<name>` (hyphens replaced with underscores).
+- Exposes running Tapthe.ai agents as MCP tools via JSON-RPC 2.0 over stdin/stdout with Content-Length framing.
+- Each agent becomes a callable tool named `tapthe_ai_agent_<name>` (hyphens replaced with underscores).
 - Connects to a running daemon via HTTP if available; otherwise boots an in-process kernel.
 - Protocol version: `2024-11-05`.
 - Maximum message size: 10MB (security limit).
@@ -1085,8 +1085,8 @@ Add to your MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "openfang": {
-      "command": "openfang",
+    "tapthe-ai": {
+      "command": "tapthe-ai",
       "args": ["mcp"]
     }
   }
@@ -1099,7 +1099,7 @@ Add to your MCP client configuration:
 
 The CLI uses a two-step mechanism to detect a running daemon:
 
-1. **Read `daemon.json`:** On startup, the daemon writes `~/.openfang/daemon.json` containing the listen address (e.g. `127.0.0.1:4200`). The CLI reads this file to learn where the daemon is.
+1. **Read `daemon.json`:** On startup, the daemon writes `~/.tapthe-ai/daemon.json` containing the listen address (e.g. `127.0.0.1:4200`). The CLI reads this file to learn where the daemon is.
 
 2. **Health check:** The CLI sends `GET http://<listen_addr>/api/health` with a 2-second timeout. If the health check succeeds, the daemon is considered running and the CLI uses HTTP to communicate with it.
 
@@ -1108,19 +1108,19 @@ If either step fails (no `daemon.json`, stale file, health check timeout), the C
 **Daemon lifecycle:**
 
 ```
-openfang start          # Starts daemon, writes daemon.json
+tapthe-ai start          # Starts daemon, writes daemon.json
                         # Other CLI instances detect daemon.json
-openfang status         # Connects to daemon via HTTP
+tapthe-ai status         # Connects to daemon via HTTP
 Ctrl+C                  # Daemon shuts down, daemon.json removed
 
-openfang doctor --repair  # Cleans up stale daemon.json from crashes
+tapthe-ai doctor --repair  # Cleans up stale daemon.json from crashes
 ```
 
 ---
 
 ## Environment File
 
-OpenFang loads `~/.openfang/.env` into the process environment on every CLI invocation. System environment variables take priority over `.env` values.
+Tapthe.ai loads `~/.tapthe-ai/.env` into the process environment on every CLI invocation. System environment variables take priority over `.env` values.
 
 The `.env` file stores API keys and secrets:
 
@@ -1153,188 +1153,188 @@ Manage keys with the `config set-key` / `config delete-key` commands rather than
 # 1. Set your API key
 export GROQ_API_KEY="gsk_your_key_here"
 
-# 2. Initialize OpenFang
-openfang init --quick
+# 2. Initialize Tapthe.ai
+tapthe-ai init --quick
 
 # 3. Start the daemon
-openfang start
+tapthe-ai start
 ```
 
 ### Daily usage
 
 ```bash
 # Quick chat (auto-spawns agent if needed)
-openfang chat
+tapthe-ai chat
 
 # Chat with a specific agent
-openfang chat coder
+tapthe-ai chat coder
 
 # Check what's running
-openfang status
+tapthe-ai status
 
 # Open the web dashboard
-openfang dashboard
+tapthe-ai dashboard
 ```
 
 ### Agent management
 
 ```bash
 # Spawn from a template
-openfang agent new assistant
+tapthe-ai agent new assistant
 
 # Spawn from a custom manifest
-openfang agent spawn ./agents/custom-agent/agent.toml
+tapthe-ai agent spawn ./agents/custom-agent/agent.toml
 
 # List running agents
-openfang agent list
+tapthe-ai agent list
 
 # Chat with an agent by UUID
-openfang agent chat <UUID>
+tapthe-ai agent chat <UUID>
 
 # Kill an agent
-openfang agent kill <UUID>
+tapthe-ai agent kill <UUID>
 ```
 
 ### Workflow automation
 
 ```bash
 # Create a workflow
-openfang workflow create ./review-pipeline.json
+tapthe-ai workflow create ./review-pipeline.json
 
 # List workflows
-openfang workflow list
+tapthe-ai workflow list
 
 # Run a workflow
-openfang workflow run <WORKFLOW_ID> "Review the latest PR"
+tapthe-ai workflow run <WORKFLOW_ID> "Review the latest PR"
 ```
 
 ### Event triggers
 
 ```bash
 # Create a trigger that fires on agent spawn
-openfang trigger create <AGENT_ID> '{"agent_spawned":{"name_pattern":"*"}}' \
+tapthe-ai trigger create <AGENT_ID> '{"agent_spawned":{"name_pattern":"*"}}' \
   --prompt "New agent spawned: {{event}}" \
   --max-fires 100
 
 # List all triggers
-openfang trigger list
+tapthe-ai trigger list
 
 # List triggers for a specific agent
-openfang trigger list --agent-id <AGENT_ID>
+tapthe-ai trigger list --agent-id <AGENT_ID>
 
 # Delete a trigger
-openfang trigger delete <TRIGGER_ID>
+tapthe-ai trigger delete <TRIGGER_ID>
 ```
 
 ### Skill management
 
 ```bash
 # Search FangHub
-openfang skill search "code review"
+tapthe-ai skill search "code review"
 
 # Install a skill
-openfang skill install code-reviewer
+tapthe-ai skill install code-reviewer
 
 # List installed skills
-openfang skill list
+tapthe-ai skill list
 
 # Create a new skill
-openfang skill create
+tapthe-ai skill create
 
 # Remove a skill
-openfang skill remove code-reviewer
+tapthe-ai skill remove code-reviewer
 ```
 
 ### Channel setup
 
 ```bash
 # Interactive channel picker
-openfang channel setup
+tapthe-ai channel setup
 
 # Direct channel setup
-openfang channel setup telegram
+tapthe-ai channel setup telegram
 
 # Check channel status
-openfang channel list
+tapthe-ai channel list
 
 # Test a channel
-openfang channel test telegram
+tapthe-ai channel test telegram
 
 # Enable/disable channels
-openfang channel enable discord
-openfang channel disable slack
+tapthe-ai channel enable discord
+tapthe-ai channel disable slack
 ```
 
 ### Configuration
 
 ```bash
 # View config
-openfang config show
+tapthe-ai config show
 
 # Get a specific value
-openfang config get default_model.provider
+tapthe-ai config get default_model.provider
 
 # Change provider
-openfang config set default_model.provider anthropic
-openfang config set default_model.model claude-sonnet-4-20250514
-openfang config set default_model.api_key_env ANTHROPIC_API_KEY
+tapthe-ai config set default_model.provider anthropic
+tapthe-ai config set default_model.model claude-sonnet-4-20250514
+tapthe-ai config set default_model.api_key_env ANTHROPIC_API_KEY
 
 # Manage API keys
-openfang config set-key anthropic
-openfang config test-key anthropic
-openfang config delete-key openai
+tapthe-ai config set-key anthropic
+tapthe-ai config test-key anthropic
+tapthe-ai config delete-key openai
 
 # Open in editor
-openfang config edit
+tapthe-ai config edit
 ```
 
 ### Migration from other frameworks
 
 ```bash
 # Preview migration
-openfang migrate --from openclaw --dry-run
+tapthe-ai migrate --from openclaw --dry-run
 
 # Run migration
-openfang migrate --from openclaw
+tapthe-ai migrate --from openclaw
 
 # Migrate from LangChain
-openfang migrate --from langchain --source-dir ~/.langchain
+tapthe-ai migrate --from langchain --source-dir ~/.langchain
 ```
 
 ### MCP integration
 
 ```bash
 # Start MCP server for Claude Desktop or other MCP clients
-openfang mcp
+tapthe-ai mcp
 ```
 
 ### Diagnostics
 
 ```bash
 # Run all diagnostic checks
-openfang doctor
+tapthe-ai doctor
 
 # Auto-repair issues
-openfang doctor --repair
+tapthe-ai doctor --repair
 
 # Machine-readable diagnostics
-openfang doctor --json
+tapthe-ai doctor --json
 ```
 
 ### Shell completions
 
 ```bash
 # Generate and install completions for your shell
-openfang completion bash >> ~/.bashrc
-openfang completion zsh > "${fpath[1]}/_openfang"
-openfang completion fish > ~/.config/fish/completions/openfang.fish
+tapthe-ai completion bash >> ~/.bashrc
+tapthe-ai completion zsh > "${fpath[1]}/_tapthe-ai"
+tapthe-ai completion fish > ~/.config/fish/completions/tapthe-ai.fish
 ```
 
 ---
 
 ## Supported LLM Providers
 
-The following providers are recognized by `openfang config set-key` and `openfang doctor`:
+The following providers are recognized by `tapthe-ai config set-key` and `tapthe-ai doctor`:
 
 | Provider | Environment Variable | Default Model |
 |---|---|---|

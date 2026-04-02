@@ -1,9 +1,9 @@
-//! Configuration loading from `~/.openfang/config.toml` with defaults.
+//! Configuration loading from `~/.tapthe-ai/config.toml` with defaults.
 //!
 //! Supports config includes: the `include` field specifies additional TOML files
 //! to load and deep-merge before the root config (root overrides includes).
 
-use openfang_types::config::KernelConfig;
+use tapthe_ai_types::config::KernelConfig;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -244,21 +244,21 @@ pub fn deep_merge_toml(base: &mut toml::Value, overlay: &toml::Value) {
 
 /// Get the default config file path.
 ///
-/// Respects `OPENFANG_HOME` env var (e.g. `OPENFANG_HOME=/opt/openfang`).
+/// Respects `TAPTHE_AI_HOME` env var (e.g. `TAPTHE_AI_HOME=/opt/tapthe-ai`).
 pub fn default_config_path() -> PathBuf {
-    openfang_home().join("config.toml")
+    tapthe_ai_home().join("config.toml")
 }
 
-/// Get the OpenFang home directory.
+/// Get the Tapthe.ai home directory.
 ///
-/// Priority: `OPENFANG_HOME` env var > `~/.openfang`.
-pub fn openfang_home() -> PathBuf {
-    if let Ok(home) = std::env::var("OPENFANG_HOME") {
+/// Priority: `TAPTHE_AI_HOME` env var > `~/.tapthe-ai`.
+pub fn tapthe_ai_home() -> PathBuf {
+    if let Ok(home) = std::env::var("TAPTHE_AI_HOME") {
         return PathBuf::from(home);
     }
     dirs::home_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join(".openfang")
+        .join(".tapthe-ai")
 }
 
 #[cfg(test)]

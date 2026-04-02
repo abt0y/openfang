@@ -1,9 +1,9 @@
 /**
- * @openfang/sdk — Official JavaScript client for the OpenFang Agent OS REST API.
+ * @tapthe-ai/sdk — Official JavaScript client for the Tapthe.ai Agent OS REST API.
  *
  * Usage:
- *   const { OpenFang } = require("@openfang/sdk");
- *   const client = new OpenFang("http://localhost:3000");
+ *   const { Tapthe.ai } = require("@tapthe-ai/sdk");
+ *   const client = new Tapthe.ai("http://localhost:3000");
  *
  *   const agent = await client.agents.create({ template: "assistant" });
  *   const reply = await client.agents.message(agent.id, "Hello!");
@@ -17,18 +17,18 @@
 
 "use strict";
 
-class OpenFangError extends Error {
+class TaptheAiError extends Error {
   constructor(message, status, body) {
     super(message);
-    this.name = "OpenFangError";
+    this.name = "TaptheAiError";
     this.status = status;
     this.body = body;
   }
 }
 
-class OpenFang {
+class Tapthe.ai {
   /**
-   * @param {string} baseUrl - OpenFang server URL (e.g. "http://localhost:3000")
+   * @param {string} baseUrl - Tapthe.ai server URL (e.g. "http://localhost:3000")
    * @param {object} [opts]
    * @param {Record<string, string>} [opts.headers] - Extra headers for every request
    */
@@ -58,7 +58,7 @@ class OpenFang {
     var res = await fetch(url, init);
     if (!res.ok) {
       var text = await res.text().catch(function () { return ""; });
-      throw new OpenFangError("HTTP " + res.status + ": " + text, res.status, text);
+      throw new TaptheAiError("HTTP " + res.status + ": " + text, res.status, text);
     }
     var ct = res.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
@@ -78,7 +78,7 @@ class OpenFang {
     var res = await fetch(url, init);
     if (!res.ok) {
       var text = await res.text().catch(function () { return ""; });
-      throw new OpenFangError("HTTP " + res.status + ": " + text, res.status, text);
+      throw new TaptheAiError("HTTP " + res.status + ": " + text, res.status, text);
     }
     var reader = res.body.getReader();
     var decoder = new TextDecoder();
@@ -255,7 +255,7 @@ class AgentResource {
     var form = new FormData();
     form.append("file", file, filename);
     var res = await fetch(url, { method: "POST", body: form });
-    if (!res.ok) throw new OpenFangError("Upload failed: " + res.status, res.status);
+    if (!res.ok) throw new TaptheAiError("Upload failed: " + res.status, res.status);
     return res.json();
   }
 
@@ -476,4 +476,4 @@ class ScheduleResource {
 
 // ── Exports ─────────────────────────────────────────────────────
 
-module.exports = { OpenFang: OpenFang, OpenFangError: OpenFangError };
+module.exports = { Tapthe.ai: Tapthe.ai, TaptheAiError: TaptheAiError };
